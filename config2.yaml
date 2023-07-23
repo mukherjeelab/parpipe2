@@ -1,4 +1,25 @@
-{cutadapt_params1 : "cutadapt,-g,GTTCAGAGTTCTACAGTCCGACGATC,-b,CGTACGCGGGTTTAAACGA,-b,CGTACGCGGAATAGTTTAAACTGT,-n,3,-j,0,--nextseq-trim=15",
-cutadapt_params2 : "cutadapt,-a,TGGAATTCTCG,-n,3,-j,0,-m,23,-M,50,--discard-untrimmed,--max-n,1",
-star_rem_reps_params : "STAR,--runModealignReads,--runThreadN,threads,--genomeDir,rep_dir,--genomeLoadNoSharedMemory,--alignEndsTypeEndToEnd,--outSAMunmappedWithin,--outFilterMultimapNmax30,--outFilterMultimapScoreRange1,--outFileNamePrefix,output,--outSAMtypeBAMUnsorted,--outFilterTypeBySJout,--outBAMcompression10,--outReadsUnmappedFastx,--outFilterScoreMin10,--outSAMattrRGlineID:foo,--outSAMattributesAll,--outSAMmodeFull,--readFilesIn,infile",
-star_map_params : "STAR,--runModealignReads,--runThreadN,threads,--genomeDir,idx_dir,--genomeLoadNoSharedMemory,--alignEndsTypeEndToEnd,--outSAMunmappedWithin,--outFilterMultimapNmax1,--outFilterMultimapScoreRange1,--outFileNamePrefix,output,--outSAMattributesAll,--outSAMtypeBAMUnsorted,--outFilterTypeBySJout,--outFilterMismatchNoverReadLmax0.2,--outSAMattrRGlineID:foo,--outStdLog,--outBAMcompression10,--outSAMmodeFull,--readFilesIn,infile"}
+{threads : 10,
+#cutadapt parameters
+cutadapt_params1 : "-g,GTTCAGAGTTCTACAGTCCGACGATC,-b,CGTACGCGGGTTTAAACGA,-b,CGTACGCGGAATAGTTTAAACTGT,-n,3,-j,0,--nextseq-trim=15",
+cutadapt_params2 : "-a,TGGAATTCTCG,-n,3,-j,0,-m,23,-M,50,--discard-untrimmed,--max-n,1",
+#STAR parameters
+rep_idx : "/media/marcin/data2/par_pipe2_test/star_test/rep_idx",
+star_rem_reps_params : "--runMode,alignReads,--genomeLoad,NoSharedMemory,--alignEndsType,EndToEnd,--outSAMunmapped,Within,--outFilterMultimapNmax,30,--outFilterMultimapScoreRange,1,--outSAMtype,BAM,Unsorted,--outFilterType,BySJout,--outBAMcompression,10,--outReadsUnmapped,Fastx,--outFilterScoreMin,10,--outSAMattrRGline,ID:foo,--outSAMattributes,All,--outSAMmode,Full",
+genome_idx : "/media/marcin/data2/par_pipe2_test/star_test/genome_idx",
+star_map_params : "--runMode,alignReads,--genomeLoad,NoSharedMemory,--alignEndsType,EndToEnd,--outSAMunmapped,Within,--outFilterMultimapNmax,1,--outFilterMultimapScoreRange,1,--outSAMattributes,All,--outSAMtype,BAM,Unsorted,--outFilterType,BySJout,--outFilterMismatchNoverReadLmax,0.2,--outSAMattrRGline,ID:foo,--outStd,Log,--outBAMcompression,10,--outSAMmode,Full",
+#PARalyzer parameters
+paralyzer_memory : "4G",
+BANDWIDTH : 3,
+CONVERSION : "T>C",
+MINIMUM_READ_COUNT_PER_GROUP : 5,
+MINIMUM_READ_COUNT_PER_CLUSTER : 2,
+MINIMUM_READ_COUNT_FOR_KDE : 3,
+MINIMUM_CLUSTER_SIZE : 11,
+MINIMUM_CONVERSION_LOCATIONS_FOR_CLUSTER : 2,
+MINIMUM_CONVERSION_COUNT_FOR_CLUSTER : 2,
+MINIMUM_READ_COUNT_FOR_CLUSTER_INCLUSION : 1,
+MINIMUM_READ_LENGTH : 15,
+MAXIMUM_NUMBER_OF_NON_CONVERSION_MISMATCHES : 1,
+signal_extension : "EXTEND_BY_READ", #one of 'EXTEND_BY_READ', 'HAFNER_APPROACH', 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL'
+ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL : 2, #only valid when signal_extension : 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL'
+GENOME_2BIT_FILE: "/media/marcin/data2/par_pipe2_test/ZFP36/PARalyzer/GRCh38_no_alt_analysis_set_GCA_000001405.15.2bit"}
