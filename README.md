@@ -37,7 +37,7 @@ or:
 ```
 $ github clone mukherjeelab/parpipe2
 ```
-Second, create directory for your project, eg:
+Second, create directory for your project, e.g.:
 ```
 $ mkdir my_parclip_dir
 ```
@@ -55,7 +55,25 @@ or:
 ```
 $ Rscript prepareAnnotFilesFromGtf.R --help
 ```
-to get help message
+to print help message.
+Now you can go to your project directory:
+```
+$ cd my_parclip_dir
+```
+**NOTE: PAR-PIPE2 must be run from your project directory.**
+and run PAR-PIPE2:
+```
+$ python /path/to/parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/reads.fastq.gz --samplename prefix_added_to_output_files
+```
+NOTE: If you want to run PAR-PIPE2 for more than one sample, specify more than one reads (comma separated, no spaces) and samplename (comma separated, no spaces). Number of argumants in --reads and --samplename have to be the same, e.g.:
+```
+$ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B
+```
+NOTE: If your reads contain UMIs add _--umi_ followed by positive or negative number to your command. Positive number means that UMIs are located at 5'end of the read, negative - 3'end, e.g.:
+```
+$ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi 6 # 6 first nucleotides are UMIs
+$ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi -4 # 4 last nucleotides are UMIs
+```
 ## Contributors
 * Marcin Sajek
 * Neelanjan Mukherjee
