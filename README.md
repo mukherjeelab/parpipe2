@@ -29,8 +29,33 @@ $ conda activate parpipe2
 We also plan to provide Docker image soon.
 
 ## Usage
-To be done soon.
-
+First clone the repository using: 
+```
+$ gh repo clone mukherjeelab/parpipe2
+```
+or:
+```
+$ github clone mukherjeelab/parpipe2
+```
+Second, create directory for your project, eg:
+```
+$ mkdir my_parclip_dir
+```
+Then you have to prepare annotation files. There are three types of annotation files: **main** - wchich is created from standard genome annotation in gtf format, **trna** - which contains tRNA coordinates and **rep**, which contains repetitive elemants coordinates. Main annotation file is required, remaining two are optional. To prepare these files for PAR-PIPE2 simply run:
+```
+$ Rscript prepareAnnotFilesFromGtf.R /absolute/path/to/my_parclip_dir /absolute/path/to/main_annotation.gtf main
+$ Rscript prepareAnnotFilesFromGtf.R /absolute/path/to/my_parclip_dir /absolute/path/to/trna.gtf trna
+$ Rscript prepareAnnotFilesFromGtf.R /absolute/path/to/my_parclip_dir /absolute/path/to/rep_elements.gtf rep
+```
+You can also run:
+```
+$ Rscript prepareAnnotFilesFromGtf.R -h
+```
+or:
+```
+$ Rscript prepareAnnotFilesFromGtf.R --help
+```
+to get help message
 ## Contributors
 * Marcin Sajek
 * Neelanjan Mukherjee
