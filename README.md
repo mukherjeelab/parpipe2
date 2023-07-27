@@ -85,6 +85,61 @@ NOTE: If your reads contain UMIs add _--umi_ followed by positive or negative nu
 $ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi 6 # 6 first nucleotides are UMIs
 $ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi -4 # 4 last nucleotides are UMIs
 ```
+After running PAR-PIPE2 your output folder should have the following structure:
+```
+my_parclip_dir
+│
+└───annotation_files
+|      | main_annotation.rds
+|      | repeats.rds
+|      | trna.rds
+│
+└───reads
+│      │ A_trimmed1.fq.gz
+│      │ A_trimmed_final.fq.gz
+│      │ A_trimmed.fa
+│      │ A_trimmed_collapsed.fa
+│      │ A_rmreps.fa
+│      │ B_trimmed1.fq.gz
+│      │ B_trimmed_final.fq.gz
+│      │ B_trimmed.fa
+│      │ B_trimmed_collapsed.fa
+│      │ B_rmreps.fa
+│
+└───ali
+|      | A.reps.bam
+|      | A.aligned.bam
+|      | A.aligned.mapped.sam
+|      | A.aligned.mapped.sorted.sam
+|      | B.reps.bam
+|      | B.aligned.bam
+|      | B.aligned.mapped.sam
+|      | B.aligned.mapped.sorted.sam
+│
+└───PARalyzer
+|      | A.ini
+|      | A_PARalyzer_Utilized.sam
+|      | A_PARalyzer_Utilized.sorted.bam
+|      | A_PARalyzer_Utilized.sorted.bam.bai
+|      | A.distribution
+|      | A.groups
+|      | A.clusters
+|      | A_clusters_conv_stats.tsv
+|      | A.ini
+|      | B_PARalyzer_Utilized.sam
+|      | B_PARalyzer_Utilized.sorted.bam
+|      | B_PARalyzer_Utilized.sorted.bam.bai
+|      | B.distribution
+|      | B.groups
+|      | B.clusters
+|      | B_clusters_conv_stats.tsv
+│
+└───output
+|      | A_annotation.tsv
+|      | B_annotation.tsv
+```
+NOTE: Directories will also contain log, error and some other temporary files files not listed above.
+
 ## Contributors
 * Marcin Sajek
 * Neelanjan Mukherjee
