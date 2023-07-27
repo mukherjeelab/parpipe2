@@ -21,7 +21,13 @@ PAR-PIPE2 is the python wrapper to analyze PAR-CLIP data.
 PAR-PIPE2 runs whole analysis starting from gzipped fastq files end ending with annotation tables using single command and yaml configuration file. It is user friendly and highly customizable tool.
 
 ## Prerequisites
-Be described soon.
+Before PAR-PIPE2 run you have to prepare some additional files.
+1. Indexed genome sequence in FASTA format. We reccomend primary assembly files from GENCODE. To index genome simply run:
+```
+samtools faidx genome_file.fa
+```
+2. Genome sequence in .2bit format
+3. STAR index for your genome (optimally generated using STAR 2.7.10b
 
 ## Dependencies
 Required libraries are stored in the `environment.yml` file. All required dependencies can be installed using *conda* by executing the following command:
@@ -51,7 +57,7 @@ Second, create directory for your project, e.g.:
 ```
 $ mkdir my_parclip_dir
 ```
-Then you have to prepare annotation files. There are three types of annotation files: **main** - wchich is created from standard genome annotation in gtf format, **trna** - which contains tRNA coordinates and **rep**, which contains repetitive elemants coordinates. Main annotation file is required, remaining two are optional. To prepare these files for PAR-PIPE2 simply run:
+Then you have to prepare annotation files. There are three types of annotation files: **main** - which is created from standard genome annotation in gtf format, **trna** - which contains tRNA coordinates and **rep**, which contains repetitive elemants coordinates. Main annotation file is required, remaining two are optional. To prepare these files for PAR-PIPE2 simply run:
 ```
 $ Rscript prepareAnnotFilesFromGtf.R /absolute/path/to/my_parclip_dir /absolute/path/to/main_annotation.gtf main
 $ Rscript prepareAnnotFilesFromGtf.R /absolute/path/to/my_parclip_dir /absolute/path/to/trna.gtf trna
