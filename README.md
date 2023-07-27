@@ -32,10 +32,10 @@ We also plan to provide Docker image soon.
 To be done soon.
 
 ## Contributors
-*Marcin Sajek
-*Neelanjan Mukherjee
-*Samantha Lisy
-*Manuel Ascano Jr
+* Marcin Sajek
+* Neelanjan Mukherjee
+* Samantha Lisy
+* Manuel Ascano Jr
 
 ## License
 GNU GPL license
