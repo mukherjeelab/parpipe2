@@ -5,7 +5,11 @@ PAR-PIPE2 is the python wrapper to analyze PAR-CLIP data.
 
 [Introduction](#introduction)
 
+[Prerequisites](#prerequisites)
+
 [Dependencies](#dependencies)
+
+[Preparing configuration file](#preparing_configuration_file)
 
 [Usage](#usage)
 
