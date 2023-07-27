@@ -22,17 +22,20 @@ PAR-PIPE2 runs whole analysis starting from gzipped fastq files end ending with 
 
 ## Prerequisites
 Before PAR-PIPE2 run you have to prepare some additional files.
-1. Indexed genome sequence in FASTA format. We reccomend primary assembly files from [GENCODE](https://www.gencodegenes.org/). To index genome simply run:
+* Indexed genome sequence in FASTA format. We reccomend primary assembly files from [GENCODE](https://www.gencodegenes.org/). To index genome simply run:
 ```
-samtools faidx genome_file.fa
+$ samtools faidx genome_file.fa
 ```
 Samtools manual can be found [here](http://www.htslib.org/doc/samtools.html).
-2. Genome sequence in .2bit format. You can use faToTwoBit file from this repo:
-3. [STAR](https://github.com/alexdobin/STAR) index for your genome (optimally generated using STAR 2.7.10b). Star manual can be found [here](https://raw.githubusercontent.com/alexdobin/STAR/master/doc/STARmanual.pdf).fa
-4. [STAR](https://github.com/alexdobin/STAR) index for repetitive elements (optimally generated using STAR 2.7.10b) (optional).
-5. Gtf annotation file for your genome assembly, available in [GENCODE](https://www.gencodegenes.org/).
-6. Gtf annotation file for tRNAs in your genome version, available in [GENCODE](https://www.gencodegenes.org/) (optional).
-7. Gtf annotation file for repetitive elemants in the genome.
+* Genome sequence in .2bit format. You can use faToTwoBit file from this repo:
+```
+$ faToTwoBit genome.fa genome.2bit
+```
+* [STAR](https://github.com/alexdobin/STAR) index for your genome (optimally generated using STAR 2.7.10b). Star manual can be found [here](https://raw.githubusercontent.com/alexdobin/STAR/master/doc/STARmanual.pdf).fa
+* [STAR](https://github.com/alexdobin/STAR) index for repetitive elements (optimally generated using STAR 2.7.10b) (optional).
+* Gtf annotation file for your genome assembly, available in [GENCODE](https://www.gencodegenes.org/).
+* Gtf annotation file for tRNAs in your genome version, available in [GENCODE](https://www.gencodegenes.org/) (optional).
+* Gtf annotation file for repetitive elemants in the genome.
 
 ## Dependencies
 Required libraries are stored in the `environment.yml` file. All required dependencies can be installed using *conda* by executing the following command:
