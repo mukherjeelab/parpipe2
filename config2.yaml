@@ -1,4 +1,5 @@
-{threads : 10,
+{parpipe2_dir : "/media/marcin/data2/par_pipe2_test/",
+threads : 10,
 #cutadapt parameters
 cutadapt_params1 : "-g,GTTCAGAGTTCTACAGTCCGACGATC,-b,CGTACGCGGGTTTAAACGA,-b,CGTACGCGGAATAGTTTAAACTGT,-n,3,-j,0,--nextseq-trim=15",
 cutadapt_params2 : "-a,TGGAATTCTCG,-n,3,-j,0,-m,23,-M,50,--discard-untrimmed,--max-n,1",
@@ -22,4 +23,7 @@ MINIMUM_READ_LENGTH : 15,
 MAXIMUM_NUMBER_OF_NON_CONVERSION_MISMATCHES : 1,
 signal_extension : "EXTEND_BY_READ", #one of 'EXTEND_BY_READ', 'HAFNER_APPROACH', 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL'
 ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL : 2, #only valid when signal_extension : 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL'
-GENOME_2BIT_FILE: "/media/marcin/data2/par_pipe2_test/ZFP36/PARalyzer/GRCh38_no_alt_analysis_set_GCA_000001405.15.2bit"}
+GENOME_2BIT_FILE: "/media/marcin/data2/par_pipe2_test/ZFP36/PARalyzer/GRCh38_no_alt_analysis_set_GCA_000001405.15.2bit",
+#ANNOTATION
+genome_fasta : "/media/marcin/data2/par_pipe2_test/paralyzer_test/PARalyzer/GRCh38_no_alt_analysis_set_GCA_000001405.15.fa",
+annot_rank : "/media/marcin/data2/par_pipe2_test/annot_files/annot_categories.txt"}
