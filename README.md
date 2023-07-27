@@ -71,7 +71,8 @@ Now you can go to your project directory:
 $ cd my_parclip_dir
 ```
 **NOTE: PAR-PIPE2 must be run from your project directory.**
-and run PAR-PIPE2:
+
+And run PAR-PIPE2:
 ```
 $ python /path/to/parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/reads.fastq.gz --samplename prefix_added_to_output_files
 ```
