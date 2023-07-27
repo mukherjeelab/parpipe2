@@ -22,11 +22,10 @@ PAR-PIPE2 runs whole analysis starting from gzipped fastq files end ending with 
 
 ## Prerequisites
 Before PAR-PIPE2 run you have to prepare some additional files.
-* Indexed genome sequence in FASTA format. We reccomend primary assembly files from [GENCODE](https://www.gencodegenes.org/). To index genome simply run:
+* Indexed genome sequence in FASTA format. We reccomend primary assembly files from [GENCODE](https://www.gencodegenes.org/). Samtools manual can be found [here](http://www.htslib.org/doc/samtools.html). To index genome simply run:
 ```
 $ samtools faidx genome_file.fa
 ```
-Samtools manual can be found [here](http://www.htslib.org/doc/samtools.html).
 * Genome sequence in .2bit format. You can use faToTwoBit file from this repo:
 ```
 $ faToTwoBit genome.fa genome.2bit
