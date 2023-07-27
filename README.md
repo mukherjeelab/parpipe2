@@ -26,8 +26,12 @@ Before PAR-PIPE2 run you have to prepare some additional files.
 ```
 samtools faidx genome_file.fa
 ```
-2. Genome sequence in .2bit format
-3. STAR index for your genome (optimally generated using STAR 2.7.10b
+2. Genome sequence in .2bit format.
+3. [STAR](https://github.com/alexdobin/STAR) index for your genome (optimally generated using STAR 2.7.10b). Star manual can be found [here](https://raw.githubusercontent.com/alexdobin/STAR/master/doc/STARmanual.pdf).
+4. STAR index for repetitive elements (optional).
+5. Gtf annotation file for your genome assembly.
+6. Gtf annotation file for tRNAs in your genome version (optional).
+7. Gtf annotation file for repetitive elemants in the genome.
 
 ## Dependencies
 Required libraries are stored in the `environment.yml` file. All required dependencies can be installed using *conda* by executing the following command:
