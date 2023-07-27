@@ -80,7 +80,7 @@ NOTE: If you want to run PAR-PIPE2 for more than one sample, specify more than o
 ```
 $ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B
 ```
-NOTE: If your reads contain UMIs add _--umi_ followed by positive or negative number to your command. Positive number means that UMIs are located at 5'end of the read, negative - 3' end (in both cases after removing the adapters), e.g.:
+NOTE: If your reads contain UMIs add _--umi_ followed by positive or negative number to your command. Positive number means that UMIs are located at 5' end of the read, negative - 3' end (in both cases after removing the adapters), e.g.:
 ```
 $ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi 6 # 6 first nucleotides are UMIs
 $ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi -4 # 4 last nucleotides are UMIs
