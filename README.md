@@ -34,7 +34,7 @@ $ faToTwoBit genome.fa genome.2bit
 * [STAR](https://github.com/alexdobin/STAR) index for repetitive elements (optimally generated using STAR 2.7.10b) (optional).
 * Gtf annotation file for your genome assembly, available in [GENCODE](https://www.gencodegenes.org/).
 * Gtf annotation file for tRNAs in your genome version, available in [GENCODE](https://www.gencodegenes.org/) (optional).
-* Gtf annotation file for repetitive elemants in the genome.
+* Gtf annotation file for repetitive elemants in the genome (optional).
 
 ## Dependencies
 Required libraries are stored in the `environment.yml` file. All required dependencies can be installed using *conda* by executing the following command:
