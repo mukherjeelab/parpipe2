@@ -138,7 +138,7 @@ my_parclip_dir
 |      | A_annotation.tsv
 |      | B_annotation.tsv
 ```
-NOTE: Directories will also contain log, error and some other temporary files files not listed above.
+NOTE: Directories will also contain log, error and some other temporary files not listed above.
 
 ## Contributors
 * Marcin Sajek
