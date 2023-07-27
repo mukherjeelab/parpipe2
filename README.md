@@ -30,7 +30,7 @@ $ samtools faidx genome_file.fa
 ```
 $ faToTwoBit genome.fa genome.2bit
 ```
-* [STAR](https://github.com/alexdobin/STAR) index for your genome (optimally generated using STAR 2.7.10b). Star manual can be found [here](https://raw.githubusercontent.com/alexdobin/STAR/master/doc/STARmanual.pdf).fa
+* [STAR](https://github.com/alexdobin/STAR) index for your genome (optimally generated using STAR 2.7.10b). Star manual can be found [here](https://raw.githubusercontent.com/alexdobin/STAR/master/doc/STARmanual.pdf).
 * [STAR](https://github.com/alexdobin/STAR) index for repetitive elements (optimally generated using STAR 2.7.10b) (optional).
 * Gtf annotation file for your genome assembly, available in [GENCODE](https://www.gencodegenes.org/).
 * Gtf annotation file for tRNAs in your genome version, available in [GENCODE](https://www.gencodegenes.org/) (optional).
