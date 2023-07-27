@@ -85,7 +85,7 @@ NOTE: If your reads contain UMIs add _--umi_ followed by positive or negative nu
 $ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi 6 # 6 first nucleotides are UMIs
 $ python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi -4 # 4 last nucleotides are UMIs
 ```
-After running PAR-PIPE2 your output folder should have the following structure:
+After running PAR-PIPE2 your project folder should have the following structure:
 ```
 my_parclip_dir
 │
