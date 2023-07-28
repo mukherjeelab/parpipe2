@@ -18,10 +18,10 @@ PAR-PIPE2 is the python wrapper to analyze PAR-CLIP data.
 [License](#license)
 
 ## Introduction
-PAR-PIPE2 runs whole analysis starting from gzipped fastq files end ending with annotation tables using single command and yaml configuration file. It is user friendly and highly customizable tool.
+PAR-PIPE2 runs whole analysis starting from gzipped fastq files end ending with annotation tables using single command and yaml configuration file. It is user friendly and a highly customizable tool.
 
 ## Prerequisites
-Before PAR-PIPE2 run you have to prepare some additional files.
+Before running PAR-PIPE2 you have to prepare some additional files.
 * Indexed genome sequence in FASTA format. We reccomend primary assembly files from [GENCODE](https://www.gencodegenes.org/). Samtools manual can be found [here](http://www.htslib.org/doc/samtools.html). To index genome simply run:
 ```
 samtools faidx genome_file.fa
@@ -36,7 +36,7 @@ faToTwoBit genome.fa genome.2bit
 * Gtf annotation file for tRNAs in your genome version, available in [GENCODE](https://www.gencodegenes.org/) (optional).
 * Gtf annotation file for repetitive elemants in the genome (optional).
 * Annotation rank file.
-Annotation rank file contain ranked list of features from your gtf(s) files. When PAR-CLIP peak is mapping to more than one genomic feature, top feature from annotation rank file is selected to annotate this peak. ```annot_categories.txt``` is an example of annotation rank file.
+Annotation rank file containing ranked list of features from your gtf(s) files. When PAR-CLIP peak is mapping to more than one genomic feature, the top feature from annotation rank file is selected to annotate this peak. ```annot_categories.txt``` is an example of annotation rank file.
 
 ## Dependencies
 Required libraries are stored in the `environment.yml` file. All required dependencies can be installed using *conda* by executing the following command:
@@ -51,28 +51,28 @@ conda activate parpipe2
 We also plan to provide Docker image soon.
 
 ## Preparing configuration file
-Most of the parameters for PAR-PIPE2 run have to be set up in ```config.yaml`` file. The configuration file contains five main sections:
+Most of the parameters for PAR-PIPE2 run have to be set up in `config.yaml` file. The configuration file contains five main sections:
 * general parameters
 * [cutadapt](https://cutadapt.readthedocs.io/en/stable/guide.html) parameters
 * [STAR](https://github.com/alexdobin/STAR) parameters
 * [PARalyzer](https://ohlerlab.mdc-berlin.de/files/duke/PARalyzer/README.txt) parameters
 * annotation parameters
-General parameters contain two fields: ```parpipe2_dir``` and ```threads```. The first one contains absolute path to your PAR-PIPE2 directory (cloned from this repo). The second, number of threads that should be used for the analysis. Example below:
+General parameters contain two fields: ```parpipe2_dir``` and ```threads```. The first one contains the absolute path to your PAR-PIPE2 directory (cloned from this repo). The second, number of threads that should be used for the analysis. Example below:
 ```
 {parpipe2_dir : "/media/marcin/data2/par_pipe2_test/",
 threads : 10,
 ```
-Cutadapt section contain adapter trimming parameters. Please familiarize yourself with [cutadapt](https://cutadapt.readthedocs.io/en/stable/guide.html) before filling this section. For some analyses it may be better to split adapter trimming for two rounds. If you want to do it at one step fill ```cutadapt_params1``` field and leave ```cutadapt_params2``` field with empty quotes ```cutadapt_params2 : ""```. To fill these fields properly provide a cutadapt parameter name and its value separated by coma withount any spaces. If there is a boolean parameter (without any value passed to it), put it in a file without any additional values. Do not put -o (--output) and input files in ```cutadapt_params1``` and ```cutadapt_params2```. They will be determined automatically by PAR-PIPE2 based on provided sample names. An example of filled ```cutadapt_params1``` and ```cutadapt_params2``` fields is showed below:
+Cutadapt section contain adapter trimming parameters. Please familiarize yourself with [cutadapt](https://cutadapt.readthedocs.io/en/stable/guide.html) before filling this section. For some analyses it may be better to split adapter trimming into two rounds. If you want to do it in one step fill ```cutadapt_params1``` field and leave ```cutadapt_params2``` field with empty quotes ```cutadapt_params2 : ""```. To fill these fields properly provide a cutadapt parameter name and its value separated by coma withount any spaces. If there is a boolean parameter (without any value passed to it), put it in a file without any additional values. Do not put -o (--output) and input files in ```cutadapt_params1``` and ```cutadapt_params2```. They will be determined automatically by PAR-PIPE2 based on provided sample names. An example of filled ```cutadapt_params1``` and ```cutadapt_params2``` fields is showed below:
 ```
 #cutadapt parameters
 cutadapt_params1 : "-g,GTTCAGAGTTCTACAGTCCGACGATC,-b,CGTACGCGGGTTTAAACGA,-b,CGTACGCGGAATAGTTTAAACTGT,-n,3,-j,0,--nextseq-trim=15",
 cutadapt_params2 : "-a,TGGAATTCTCG,-n,3,-j,0,-m,23,-M,50,--discard-untrimmed,--max-n,1",
 ```
 TIP: ```-j 0 ``` in cutadapt determined automatically numbers of available threads (should be written in config file as ```,-j,0,```.
-TIP: If your sequencing was performed on Novaseq platform add ```--nextseq-trim``` parameter, which automatically remove empty runs.
-TIP: To long reads can cause further issues with PARalyzer. Consider setting max read length parameter, e.g. ```-M,50```.
+TIP: If your sequencing was performed on Novaseq platform add ```--nextseq-trim``` parameter, which automatically removes empty runs.
+TIP: Too long of reads can cause further issues with PARalyzer. Consider setting a max read length parameter, e.g. ```-M,50```.
 
-The next section of configuration file contain parameters list passed to  STAR. Detailed description of  STAR parameters may be find in this [manual](https://raw.githubusercontent.com/alexdobin/STAR/master/doc/STARmanual.pdf). STAR alignment is divided into two steps. First, optional step is mapping your reads to repetitive elements in the genome. To perfom this step you have to fill ```rep_idx``` field with absolute path to the STAR index for repetitive elements and ```star_rem_reps_params``` with STAR parameters that will be passed to PAR-PIPE2. If you leave ```star_rem_reps_params``` blank ```star_rem_reps_params : ""``` this step will be omitted. At the next step reads that were not aligned to repetitive elments (or all reads if first step was omitted) are mapped to the genome. ```genome_idx``` required absolute path to the STAR index for your genome and ```star_map_params``` list of STAR parameters. ```star_rem_reps_params``` and ```star_map_params``` must be filled in exactly the same way as ```cutadapt_params1``` and ```cutadapt_params2```. Do not include ```--genomeDir``` parameter in ```star_rem_reps_params``` and ``star_map_params```. It will be determined based on ```rep_idx``` and|or ```genome_idx``` fields. Also do not include ```--readFilesIn``` and ```--outFileNamePrefix``` parameters. They will be determined automatically by PAR-PIPE2. The example of filled STAR parameters section is showed below:
+The next section of the configuration file contains a parameters list passed to  STAR. A detailed description of  STAR parameters may be find in this [manual](https://raw.githubusercontent.com/alexdobin/STAR/master/doc/STARmanual.pdf). STAR alignment is divided into two steps. First, an optional step is mapping your reads to repetitive elements in the genome. To perfom this step you have to fill the ```rep_idx``` field with an absolute path to the STAR index for repetitive elements and ```star_rem_reps_params``` with STAR parameters that will be passed to PAR-PIPE2. If you leave ```star_rem_reps_params``` blank ```star_rem_reps_params : ""``` this step will be omitted. At the next step reads that were not aligned to repetitive elments (or all reads if first step was omitted) are mapped to the genome. ```genome_idx``` requiress the absolute path to the STAR index for your genome and the ```star_map_params``` list of STAR parameters. ```star_rem_reps_params``` and ```star_map_params``` must be filled in exactly the same way as ```cutadapt_params1``` and ```cutadapt_params2```. Do not include the ```--genomeDir``` parameter in ```star_rem_reps_params``` and ``star_map_params```. It will be determined based on ```rep_idx``` and|or ```genome_idx``` fields. Also do not include ```--readFilesIn``` and ```--outFileNamePrefix``` parameters. They will be determined automatically by PAR-PIPE2. The example of filled STAR parameters section is showed below:
 ```
 #STAR parameters
 rep_idx : "/media/marcin/data2/par_pipe2_test/star_test/rep_idx",
@@ -80,9 +80,9 @@ star_rem_reps_params : "--runMode,alignReads,--genomeLoad,NoSharedMemory,--align
 genome_idx : "/media/marcin/data2/par_pipe2_test/star_test/genome_idx",
 star_map_params : "--runMode,alignReads,--genomeLoad,NoSharedMemory,--alignEndsType,EndToEnd,--outSAMunmapped,Within,--outFilterMultimapNmax,1,--outFilterMultimapScoreRange,1,--outSAMattributes,All,--outSAMtype,BAM,Unsorted,--outFilterType,BySJout,--outFilterMismatchNoverReadLmax,0.2,--outSAMattrRGline,ID:foo,--outStd,Log,--outBAMcompression,10,--outSAMmode,Full",
 ```
-TIP: If parmeter takes more than one value, simply separate both values by coma, e.g. ```--outSAMtype BAM Unsorted``` should be passed to config file as ```--outSAMtype,BAM,Unsorted```.
+TIP: If a parmeter takes more than one value, simply separate both values by coma, e.g. ```--outSAMtype BAM Unsorted``` should be passed to config file as ```--outSAMtype,BAM,Unsorted```.
 
-PARalyzer parameters section is directly use to create .ini file for PARalyzer run and setup memory limit for PARalyzer (```paralyzer_memory``` field). To properly fill all fields please read PARalyzer [manual](https://ohlerlab.mdc-berlin.de/files/duke/PARalyzer/README.txt). Field ```ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL``` is required only if ```signal_extension : ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL```. In other cases will be skipped. Example of PARalyzer parameters section below:
+The PARalyzer parameters section is directly used to create .ini file for PARalyzer run and setup memory limit for PARalyzer (```paralyzer_memory``` field). To properly fill all fields please read PARalyzer [manual](https://ohlerlab.mdc-berlin.de/files/duke/PARalyzer/README.txt). Field ```ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL``` is required only if ```signal_extension : ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL```. In other cases it will be skipped. Example of PARalyzer parameters section below:
 ```
 #PARalyzer parameters
 paralyzer_memory : "4G",
@@ -101,7 +101,7 @@ signal_extension : "EXTEND_BY_READ", #one of 'EXTEND_BY_READ', 'HAFNER_APPROACH'
 ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL : 2, #only valid when signal_extension : 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL'
 GENOME_2BIT_FILE: "/media/marcin/data2/par_pipe2_test/ZFP36/PARalyzer/GRCh38_no_alt_analysis_set_GCA_000001405.15.2bit",
 ```
-Annotation section contains ```genome_fasta``` field - absolute path to your genome sequence and ```annot_rank``` field - absolute path to your annotation rank file. Example below:
+The annotation section contains ```genome_fasta``` field - absolute path to your genome sequence and ```annot_rank``` field - absolute path to your annotation rank file. Example below:
 ```
 #ANNOTATION
 genome_fasta : "/media/marcin/data2/par_pipe2_test/paralyzer_test/PARalyzer/GRCh38_no_alt_analysis_set_GCA_000001405.15.fa",
@@ -121,7 +121,7 @@ Second, create directory for your project, e.g.:
 ```
 mkdir my_parclip_dir
 ```
-Then you have to prepare annotation files. There are three types of annotation files: **main** - which is created from standard genome annotation in gtf format, **trna** - which contains tRNA coordinates and **rep**, which contains repetitive elemants coordinates. Main annotation file is required, remaining two are optional. To prepare these files for PAR-PIPE2 simply run:
+Then you have to prepare annotation files. There are three types of annotation files: **main** - which is created from standard genome annotation in gtf format, **trna** - which contains tRNA coordinates and **rep**, which contains repetitive elemants coordinates. The main annotation file is required, the remaining two are optional. To prepare these files for PAR-PIPE2 simply run:
 ```
 Rscript prepareAnnotFilesFromGtf.R /absolute/path/to/my_parclip_dir /absolute/path/to/main_annotation.gtf main
 Rscript prepareAnnotFilesFromGtf.R /absolute/path/to/my_parclip_dir /absolute/path/to/trna.gtf trna
@@ -150,7 +150,7 @@ NOTE: If you want to run PAR-PIPE2 for more than one sample, specify more than o
 ```
 python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B
 ```
-NOTE: If your reads contain UMIs add _--umi_ followed by positive or negative number to your command. Positive number means that UMIs are located at 5' end of the read, negative - 3' end (in both cases after removing the adapters), e.g.:
+NOTE: If your reads contain UMIs add _--umi_ followed by a positive or negative number to your command. A positive number means that UMIs are located at 5' end of the read, a negative indicates 3' end (in both cases after removing the adapters), e.g.:
 ```
 python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi 6 # 6 first nucleotides are UMIs
 python parpipe2_0.1.py --config_file /path/to/yaml/configuration/file --reads /path/to/A.fastq.gz,/path/to/B.fastq.gz --samplename A,B --umi -4 # 4 last nucleotides are UMIs
@@ -208,7 +208,7 @@ my_parclip_dir
 |      | A_annotation.tsv
 |      | B_annotation.tsv
 ```
-NOTE: Directories will also contain log, error and some other temporary files not listed above.
+NOTE: Directories will also contain a log, error and some other temporary files not listed above.
 
 ## Contributors
 * Marcin Sajek
