@@ -57,6 +57,7 @@ Most of the parameters for PAR-PIPE2 run have to be set up in `config.yaml` file
 * [STAR](https://github.com/alexdobin/STAR) parameters
 * [PARalyzer](https://ohlerlab.mdc-berlin.de/files/duke/PARalyzer/README.txt) parameters
 * annotation parameters
+  
 General parameters contain two fields: ```parpipe2_dir``` and ```threads```. The first one contains the absolute path to your PAR-PIPE2 directory (cloned from this repo). The second, number of threads that should be used for the analysis. Example below:
 ```
 {parpipe2_dir : "/media/marcin/data2/par_pipe2_test/",
