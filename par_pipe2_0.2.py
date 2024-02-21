@@ -44,10 +44,10 @@ def prepare_genome_and_annotation(configuration):
             genome_ver = '45'    
         else:
              genome_ver = configuration['genome_version']
-             if int(genome_ver) > 41:
-                 gtf_file = "gencode.v{0}.primary_assembly.basic.annotation.gtf".format(genome_ver)
-             else:
-                 gtf_file = "gencode.v{0}.primary_assembly.annotation.gtf".format(genome_ver)
+        if int(genome_ver) > 41:
+            gtf_file = "gencode.v{0}.primary_assembly.basic.annotation.gtf".format(genome_ver)
+        else:
+            gtf_file = "gencode.v{0}.primary_assembly.annotation.gtf".format(genome_ver)
                  
         print("Selected genome version is {0}".format(genome_ver))
         genome = os.path.join(cwd, 'genome', genome_file)
