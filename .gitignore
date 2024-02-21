@@ -1,1 +1,5 @@
+#compressed rep idx
+annotation/rep_idx.tar.gz
 
+#rds files for tRNA and rep elements
+annotation/rds_files/*rds
