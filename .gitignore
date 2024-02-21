@@ -4,5 +4,3 @@ annotation/rep_idx.tar.gz
 #rds files for tRNA and rep elements
 annotation/rds_files/*rds
 
-#ZFP36 test data fastq
-test_data/ZFP36.fq.gz
