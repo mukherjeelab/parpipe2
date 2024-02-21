@@ -21,22 +21,7 @@ PAR-PIPE2 is the python wrapper to analyze PAR-CLIP data.
 PAR-PIPE2 runs whole analysis starting from gzipped fastq files end ending with annotation tables using single command and yaml configuration file. It is user friendly and a highly customizable tool.
 
 ## Prerequisites
-Before running PAR-PIPE2 you have to prepare some additional files.
-* Indexed genome sequence in FASTA format. We reccomend primary assembly files from [GENCODE](https://www.gencodegenes.org/). Samtools manual can be found [here](http://www.htslib.org/doc/samtools.html). To index genome simply run:
-```
-samtools faidx genome_file.fa
-```
-* Genome sequence in .2bit format. You can use faToTwoBit file from this repo:
-```
-faToTwoBit genome.fa genome.2bit
-```
-* [STAR](https://github.com/alexdobin/STAR) index for your genome (optimally generated using STAR 2.7.10b). Star manual can be found [here](https://raw.githubusercontent.com/alexdobin/STAR/master/doc/STARmanual.pdf).
-* [STAR](https://github.com/alexdobin/STAR) index for repetitive elements (optimally generated using STAR 2.7.10b) (optional).
-* Gtf annotation file for your genome assembly, available in [GENCODE](https://www.gencodegenes.org/).
-* Gtf annotation file for tRNAs in your genome version, available in [GENCODE](https://www.gencodegenes.org/) (optional).
-* Gtf annotation file for repetitive elemants in the genome (optional).
-* Annotation rank file.
-Annotation rank file containing ranked list of features from your gtf(s) files. When PAR-CLIP peak is mapping to more than one genomic feature, the top feature from annotation rank file is selected to annotate this peak. ```annot_categories.txt``` is an example of annotation rank file.
+The only thing you must know before running PAR-PIPE2 is the location of your fastq.gz files and your adapters sequences. If you want you can also provide your own genome version and annotation, star index etc (see below). 
 
 ## Dependencies
 Required libraries are stored in the `environment.yml` file. All required dependencies can be installed using *conda* by executing the following command:
@@ -217,6 +202,7 @@ NOTE: Directories will also contain a log, error and some other temporary files 
 * Marcin Sajek
 * Neelanjan Mukherjee
 * Samantha Lisy
+* Yelena Prevalova
 * Manuel Ascano Jr
 
 ## License
