@@ -293,14 +293,22 @@ def star_rm_reps(configuration, samplename, collapsed_reads_list, threads):
             if configuration['rep_idx'] == '' or configuration['rep_idx'] == None:
                 pp2_path = configuration['parpipe2_dir'] 
                 rep_idx = os.path.join(pp2_path, 'annotation', 'rep_idx')
+                if os.path.isfile('{0}.tar.gz'.format(rep_idx)):
+                    gz_cmd = ['tar', '-xvzf', '{0}.tar.gz'.format(rep_idx), '>>', logfile, '2>>', errfile]
+                    print('Unzipping rep index...')
+                    outcode = os.WEXITSTATUS(os.system(" ".join(gz_cmd)))
+                    if outcode == 0:     
+                        print("Rep index unzipped succesfully")
+                    else:
+                        print("an ERROR occured during rep index unzipping :(\ncheck {0} for details".format(errfile)) 
             else:
                 rep_idx = configuration['rep_idx'] 
                 
             if configuration['star_rem_reps_params'] == '' or configuration['star_rem_reps_params'] == None:
-                command = ['STAR'] + "--runMode,alignReads,--genomeLoad,NoSharedMemory,--alignEndsType,EndToEnd,--outSAMunmapped,Within,--outFilterMultimapNmax,30,--outFilterMultimapScoreRange,1,--outSAMtype,BAM,Unsorted,--outFilterType,BySJout,--outBAMcompression,10,--outReadsUnmapped,Fastx,--outFilterScoreMin,10,--outSAMattrRGline,ID:foo,--outSAMattributes,All,--outSAMmode,Full".split(",") + ['--runThreadN', str(threads), '--genomeDir', rep_idx, '--outFileNamePrefix', star_prefix, '--readFilesIn', infile, '>', logfile, '2>', errfile]
+                command = ['STAR'] + "--runMode,alignReads,--genomeLoad,NoSharedMemory,--alignEndsType,EndToEnd,--outSAMunmapped,Within,--outFilterMultimapNmax,30,--outFilterMultimapScoreRange,1,--outSAMtype,BAM,Unsorted,--outFilterType,BySJout,--outBAMcompression,10,--outReadsUnmapped,Fastx,--outFilterScoreMin,10,--outSAMattrRGline,ID:foo,--outSAMattributes,All,--outSAMmode,Full".split(",") + ['--runThreadN', str(threads), '--genomeDir', rep_idx, '--outFileNamePrefix', star_prefix, '--readFilesIn', infile, '>>', logfile, '2>>', errfile]
                 
             else:
-                command = ['STAR'] + configuration['star_rem_reps_params'].split(',') + ['--runThreadN', str(threads), '--genomeDir', rep_idx, '--outFileNamePrefix', star_prefix, '--readFilesIn', infile, '>', logfile, '2>', errfile]
+                command = ['STAR'] + configuration['star_rem_reps_params'].split(',') + ['--runThreadN', str(threads), '--genomeDir', rep_idx, '--outFileNamePrefix', star_prefix, '--readFilesIn', infile, '>>', logfile, '2>>', errfile]
         
             print("Running STAR to remove repetitive sequences for {0}...".format(sample))
         
