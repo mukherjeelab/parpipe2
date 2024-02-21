@@ -1,2 +1,0 @@
-annotation/rep_idx filter=lfs diff=lfs merge=lfs -text
-annotation/rep_idx/* filter=lfs diff=lfs merge=lfs -text
