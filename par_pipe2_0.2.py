@@ -294,7 +294,7 @@ def star_rm_reps(configuration, samplename, collapsed_reads_list, threads):
                 pp2_path = configuration['parpipe2_dir'] 
                 rep_idx = os.path.join(pp2_path, 'annotation', 'rep_idx')
                 if os.path.isfile('{0}.tar.gz'.format(rep_idx)):
-                    gz_cmd = ['tar', '-xvzf', '{0}.tar.gz'.format(rep_idx), '>>', logfile, '2>>', errfile]
+                    gz_cmd = ['tar', '-xvzf', '{0}.tar.gz'.format(rep_idx), '-C', os.path.join(pp2_path, 'annotation'), '&&', 'rm', '{0}.tar.gz'.format(rep_idx),  '>>', logfile, '2>>', errfile]
                     print('Unzipping rep index...')
                     outcode = os.WEXITSTATUS(os.system(" ".join(gz_cmd)))
                     if outcode == 0:     
