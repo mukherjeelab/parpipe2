@@ -152,6 +152,33 @@ def prepare_star_index(configuration, genome, annotation, threads):
     return star_idx_outdir
     
     
+def prepare_bowtie_index(configuration, genome, threads):
+
+    genome = genome
+    if configuration['bowtie_index_dir'] =="" or configuration['bowtie_index_dir'] == None:
+        if not os.path.exists('bowtie_index'):
+            os.mkdir('bowtie_index')
+        bowtie_idx_outdir = os.path.join(cwd, 'bowtie_index')     
+        logfile =  os.path.join(cwd, 'bowtie_index', 'bowtie_index.{0}.log'.format(ts))
+        errfile =  os.path.join(cwd, 'bowtie_index', 'bowtie_index{0}.err'.format(ts)) 
+        if configuration['bowtie_index_params'] == '' or configuration['bowtie_index_params'] == None:
+            command = ['bowtie-build', '--threads', str(threads), '-f', genome, '{0}/bwt'.format(str(bowtie_idx_outdir)), '>', logfile, '2>', errfile]
+        else:
+            command = ['bowtie-build'] + cfg['bowtie_index_params'].split(",") + ['-f', genome, '{0}/bwt'.format(str(bowtie_idx_outdir)), '>', logfile, '2>', errfile]
+        
+        print("Generating bowtie index...")    
+        outcode = os.WEXITSTATUS(os.system(" ".join(command)))
+        if outcode == 0:     
+            print("bowtie index generated succesfully\ncheck {0} for details".format(logfile))
+        else:
+            print("an ERROR occured during bowtie index generation :(\ncheck {0} for details".format(errfile))
+    else:
+        print("bowtie index provided by user")
+        bowtie_idx_outdir = configuration['bowtie_index_dir']
+            
+    return bowtie_idx_outdir
+    
+    
 def trim_adapters_round1(configuration, reads, samplename):
     if not os.path.exists('reads'):
         os.mkdir('reads')
@@ -161,6 +188,7 @@ def trim_adapters_round1(configuration, reads, samplename):
     samplename = samplename.split(",") 
     reads = reads.split(",")
     out_trim_reads1_list = []
+    cutadapt_log_list = []
     
     for idx, sample in enumerate(samplename):
         
@@ -168,6 +196,7 @@ def trim_adapters_round1(configuration, reads, samplename):
         out_trim_reads1 = os.path.join(cwd, 'reads', '{0}_{1}.trimmed1.fq.gz'.format(sample,ts))
         out_trim_reads1_list.append(out_trim_reads1)
         logfile =  os.path.join(cwd, 'reads', '{0}_cutadapt_round1.{1}.log'.format(sample,ts))
+        cutadapt_log_list.append(logfile)
         errfile =  os.path.join(cwd, 'reads', '{0}_cutadapt_round1.{1}.err'.format(sample,ts))
         if configuration['nextseq'] in ['', None, False, 'False', 0, '0']: 
             if not configuration['three_prime_adapter'] in ['', None, False, 'False', 0, '0'] and not configuration['five_prime_adapter'] in ['', None, False, 'False', 0, '0']:
@@ -195,7 +224,7 @@ def trim_adapters_round1(configuration, reads, samplename):
         else:
             print("an ERROR occured during cutadapt round 1 :(\ncheck {0} for details".format(errfile)) 
       
-    return out_trim_reads1_list
+    return out_trim_reads1_list, cutadapt_log_list
     
     
 def trim_adapters_round2(configuration, samplename, out_trim_reads1_list):
@@ -331,6 +360,7 @@ def star_genome_map(configuration, samplename, star_index_outdir, rm_rep_reads_l
     outdir = os.path.join(cwd, 'ali')
     genome_idx = star_index_outdir
     output_sam_list = []
+    ali_log_list = []
     
     for idx, sample in enumerate(samplename):
         infile = rm_rep_reads_list[idx]
@@ -341,9 +371,11 @@ def star_genome_map(configuration, samplename, star_index_outdir, rm_rep_reads_l
         tmp_sam = os.path.join(cwd, 'ali', '{0}.{1}.aligned.mapped.sam'.format(sample,ts))
         logfile =  os.path.join(cwd, 'ali', '{0}_genome_map.{1}.log'.format(sample,ts))
         errfile =  os.path.join(cwd, 'ali', '{0}_genome_map.{1}.err'.format(sample,ts))
+        log_star = os.path.join(cwd, 'ali', '{0}.{1}.Log.final.out'.format(sample,ts))
+        ali_log_list.append(log_star)
         
         if configuration['star_map_params'] == '' or configuration['star_map_params'] == None:
-            star_command = ['STAR'] + "--runMode,alignReads,--genomeLoad,NoSharedMemory,--alignEndsType,EndToEnd,--outSAMunmapped,Within,--outFilterMultimapNmax,1,--outFilterMultimapScoreRange,1,--outSAMattributes,All,--outSAMtype,BAM,Unsorted,--outFilterType,BySJout,--outFilterMismatchNoverReadLmax,0.05,--outSAMattrRGline,ID:foo,--outStd,Log,--outBAMcompression,10,--outSAMmode,Full".split(",") + ['--runThreadN', str(threads), '--genomeDir', genome_idx, '--outFileNamePrefix', star_prefix, '--readFilesIn', infile, '>', logfile, '2>', errfile]
+            star_command = ['STAR'] + "--runMode,alignReads,--genomeLoad,NoSharedMemory,--alignEndsType,EndToEnd,--outSAMunmapped,Within,--outFilterMultimapNmax,10,--outSAMmultNmax,1,--outSAMattributes,All,--outSAMtype,BAM,Unsorted,--outFilterType,BySJout,--outFilterMismatchNoverReadLmax,0.1,--outSAMattrRGline,ID:foo,--outStd,Log,--outBAMcompression,10,--outSAMmode,Full".split(",") + ['--runThreadN', str(threads), '--genomeDir', genome_idx, '--outFileNamePrefix', star_prefix, '--readFilesIn', infile, '>', logfile, '2>', errfile]
         else:
             star_command = ['STAR'] + configuration['star_map_params'].split(',') + ['--runThreadN', str(threads), '--genomeDir', genome_idx, '--outFileNamePrefix', star_prefix, '--readFilesIn', infile, '>', logfile, '2>', errfile]
         
@@ -371,10 +403,43 @@ def star_genome_map(configuration, samplename, star_index_outdir, rm_rep_reads_l
         else:
             print("an ERROR occured during mapped SAM file sorting :(\ncheck {0} for details".format(errfile)) 
         
-    return output_sam_list 
+    return output_sam_list, ali_log_list 
     
     
-def config_and_run_PARalyzer(configuration, samplename, output_sam_list, genome_2bit):
+def bowtie_genome_map(configuration, samplename, bowtie_index_outdir, rm_rep_reads_list, threads):
+
+    samplename = samplename.split(",") 
+    outdir = os.path.join(cwd, 'ali')
+    genome_idx = '{0}/bwt'.format(str(bowtie_index_outdir))
+    output_sam_list = []
+    ali_log_list = []
+    
+    for idx, sample in enumerate(samplename):
+        infile = rm_rep_reads_list[idx]
+        output_sam = os.path.join(cwd, 'ali', '{0}.{1}.aligned.mapped.sorted.sam'.format(sample,ts))
+        output_sam_list.append(output_sam)
+        logfile =  os.path.join(cwd, 'ali', '{0}_genome_map.{1}.log'.format(sample,ts))
+        errfile =  os.path.join(cwd, 'ali', '{0}_genome_map.{1}.err'.format(sample,ts))
+        ali_log_list.append(errfile)
+        
+        if configuration['bowtie_map_params'] == '' or configuration['bowtie_map_params'] == None:
+            bowtie_command = ['bowtie', genome_idx, '-v 1 -m 10 --best --strata -p', str(threads), '-S -f', infile, '--quiet', '2>>', errfile, '| samtools view -hS -F 4 - >', output_sam, '2>>', errfile]
+        else:
+            bowtie_command = ['bowtie', genome_idx] + configuration['bowtie_map_params'].split(',') + ['-f', infile,  '2>>', errfile, '| samtools view -hS -F 4 - >', output_sam, '2>>', errfile]
+            
+        print("Running bowtie to align to genome for {0}...".format(sample))
+        
+        outcode = os.WEXITSTATUS(os.system(" ".join(bowtie_command)))    
+        if outcode == 0:     
+            print("Bowtie finished succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during bowtie run :(\ncheck {0} for details".format(errfile)) 
+            
+    return output_sam_list, ali_log_list
+    
+    
+    
+def config_and_run_PARalyzer(configuration, samplename, output_sam_list, genome_2bit, umi = None):
 
     if not os.path.exists('PARalyzer'):
         os.mkdir('PARalyzer')
@@ -382,11 +447,14 @@ def config_and_run_PARalyzer(configuration, samplename, output_sam_list, genome_
     outdir = os.path.join(cwd, 'PARalyzer')
     paralyzer_mem = configuration['paralyzer_memory']
     output_clust_list = []
+    output_groups_list = []
     
     for idx, sample in enumerate(samplename):
         sam_file = output_sam_list[idx]
         output_clust = os.path.join(cwd,outdir, '{0}.{1}.clusters'.format(sample,ts))
         output_clust_list.append(output_clust)
+        output_group = os.path.join(cwd,outdir, '{0}.{1}.groups'.format(sample,ts))
+        output_groups_list.append(output_group)
         genome_2bit = genome_2bit
         logfile =  os.path.join(cwd,outdir, '{0}_PARalyzer.{1}.log'.format(sample,ts))
         errfile =  os.path.join(cwd,outdir, '{0}_PARalyzer.{1}.err'.format(sample,ts))
@@ -400,7 +468,10 @@ def config_and_run_PARalyzer(configuration, samplename, output_sam_list, genome_
                 ini_file.write('HAFNER_APPROACH\n\n')
             elif configuration['signal_extension'] == 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL':
                 ini_file.write('ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL={0}\n\n'.format(configuration['ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL']))
-            ini_file.write('GENOME_2BIT_FILE={0}\nSAM_FILE={1}\n\nOUTPUT_DISTRIBUTIONS_FILE={2}.distribution\nOUTPUT_GROUPS_FILE={2}.groups\nOUTPUT_CLUSTERS_FILE={2}.clusters\nOUTPUT_READS_FILE={2}_PARalyzer_Utilized.sam\n\n'.format(genome_2bit,sam_file,str(output_clust).replace('.clusters','')))
+            if umi:
+                ini_file.write('GENOME_2BIT_FILE={0}\nSAM_FILE={1}\n\nOUTPUT_DISTRIBUTIONS_FILE={2}.distribution\nOUTPUT_GROUPS_FILE={2}.groups\nOUTPUT_CLUSTERS_FILE={2}.clusters\nOUTPUT_READS_FILE={2}_PARalyzer_Utilized.sam\n\n'.format(genome_2bit,sam_file,str(output_clust).replace('.clusters','')))
+            else: 
+                ini_file.write('GENOME_2BIT_FILE={0}\nSAM_FILE={1}=COLLAPSED\n\nOUTPUT_DISTRIBUTIONS_FILE={2}.distribution\nOUTPUT_GROUPS_FILE={2}.groups\nOUTPUT_CLUSTERS_FILE={2}.clusters\nOUTPUT_READS_FILE={2}_PARalyzer_Utilized.sam\n\n'.format(genome_2bit,sam_file,str(output_clust).replace('.clusters','')))
             
         paralyzer_cmd = ['PARalyzer', paralyzer_mem, config_out, '>', logfile, '2>', errfile]   
         
@@ -413,7 +484,7 @@ def config_and_run_PARalyzer(configuration, samplename, output_sam_list, genome_
         else:
             print("an ERROR occured during PARalyzer run :(\ncheck {0} for details".format(errfile))   
             
-    return output_clust_list
+    return output_groups_list, output_clust_list
     
     
 def run_clusters_stats(samplename, output_sam_list, output_clust_list, genome):
@@ -512,22 +583,44 @@ def run_annot(configuration, samplename, output_stats_list, main_annot_rds):
         logfile =  os.path.join(outdir, '{0}_annotation.{1}.log'.format(sample,ts))
         errfile =  os.path.join(outdir, '{0}_annotation.{1}.err'.format(sample,ts))
         
+        with open(infile_clust, 'r') as f:
+            if sum(1 for line in f) > 1:
+                command = ['Rscript', annotR, outdir, annot_rank_file, main_annot, trna_annot, repeats_annot, infile_clust, annot, '>', logfile, '2>', errfile]
         
-        command = ['Rscript', annotR, outdir, annot_rank_file, main_annot, trna_annot, repeats_annot, infile_clust, annot, '>', logfile, '2>', errfile]
-        
-        print("Running annotation for {0}...".format(sample)) 
-        outcode = os.WEXITSTATUS(os.system(" ".join(command)))    
-        if outcode == 0:     
-            print("Annotation finished succesfully for {0}".format(sample))
-        else:
-            print("an ERROR occured during annotation :(\ncheck {0} for details".format(errfile))
+                print("Running annotation for {0}...".format(sample)) 
+                outcode = os.WEXITSTATUS(os.system(" ".join(command)))    
+                if outcode == 0:     
+                    print("Annotation finished succesfully for {0}".format(sample))
+                else:
+                    print("an ERROR occured during annotation :(\ncheck {0} for details".format(errfile))
+            else:
+                command = ['echo No clusters for annotation > ', annot] 
+                print("No clusters to annotate for {0}...".format(sample)) 
+                os.system(" ".join(command))
             
     return annot_list
     
     
-def get_summary_stats(configuration, samplename, reads, out_trim_reads2_list, collapsed_reads_list, rm_rep_reads_list, output_sam_list, output_clust_list, annot_list):
+def get_summary_stats(configuration, samplename, reads, cutadapt_log_list, collapsed_reads_list, rm_rep_reads_list, ali_log_list, output_groups_list, output_clust_list, annot_list):
 
-    sum_stats = {"raw_reads": [], "trimmed_reads" : [], "collapsed_reads" : [], "rm_rep_reads" : [], "mapped_reads": [], "clusters": [], "annotated_clusters": []}
+    sum_stats = {"raw_reads": [],
+    "reads_with_adapters" : [],
+    "too_short_reads" : [],
+    "passed_reads":[],
+    "collapsed_reads" : [],
+    "rm_rep_reads" : [],
+    "mapped_reads_total": [],
+    'uniquely_mapped_reads' : [],
+    'multimapped_reads' : [],
+    "unmapped_reads_total" : [],
+    "unmapped_reads_too_many_multimaps" : [],
+    "unmapped_reads_too_many_mismatches" : [],
+    "unmapped_reads_too_short" : [],
+    "unmapped_reads_other" : [],
+    "groups" : [],
+    "clusters": [],
+    "annotated_clusters": []
+    }
     samplename = samplename.split(",")
     reads = reads.split(",")
     if not configuration["sum_stats_prefix"] in ['', None, False, 'False', '0', 0]:
@@ -540,26 +633,67 @@ def get_summary_stats(configuration, samplename, reads, out_trim_reads2_list, co
         with gzip.open(raw_read, 'rt') as f:
             raw_read_cnt = sum(1 for line in f)/4
         sum_stats['raw_reads'].append(raw_read_cnt)
-        trimmed_read = out_trim_reads2_list[idx]
-        with gzip.open(trimmed_read, 'rt') as f:
-            trimmed_read_cnt = sum(1 for line in f)/4
-        sum_stats['trimmed_reads'].append(trimmed_read_cnt)
+        cutadapt_log = cutadapt_log_list[idx]
+        with open(cutadapt_log, 'r') as f:
+            for line in f:
+                spl_line = line.split()
+                if line.startswith("Reads with adapters"):
+                    sum_stats["reads_with_adapters"].append(int(spl_line[3].replace(",","")))
+                elif line.startswith("Reads that were too short"):
+                    sum_stats["too_short_reads"].append(int(spl_line[5].replace(",","")))
+                elif line.startswith("Reads written (passing filters)"):
+                    sum_stats["passed_reads"].append(int(spl_line[4].replace(",","")))
+                    
         collapsed_read = collapsed_reads_list[idx]
         with open(collapsed_read, 'r') as f:
             collapsed_read_cnt = sum(1 for line in f)/2
         sum_stats['collapsed_reads'].append(collapsed_read_cnt)
-        rm_rep_read = rm_rep_reads_list[idx]    
-        with open(rm_rep_read, 'r') as f:
-            rm_rep_read_cnt = sum(1 for line in f)/2
-        sum_stats['rm_rep_reads'].append(rm_rep_read_cnt)
-        output_sam = output_sam_list[idx]
-        sam_cnt = 0
-        with open(output_sam, 'r') as sam:
-            for line in sam:
-                if line.startswith('@'):
-                    continue
-                sam_cnt += 1
-        sum_stats['mapped_reads'].append(sam_cnt)
+        if not configuration['rem_rep'] in [False, 'False', '0', 0, 'no']:
+            rm_rep_read = rm_rep_reads_list[idx]    
+            with open(rm_rep_read, 'r') as f:
+                rm_rep_read_cnt = sum(1 for line in f)/2
+            sum_stats['rm_rep_reads'].append(rm_rep_read_cnt)
+        ali_stats = ali_log_list[idx]
+        mapped_reads_total = 0
+        unmapped_reads_total = 0
+        if configuration['aligner'] in ['S', 's', 'STAR', 'star', 'Star']:
+            with open(ali_stats, 'r') as f:
+                for line in f:
+                    spl_line = line.split()
+                    if line.lstrip().startswith('Uniquely mapped reads number'):
+                        sum_stats['uniquely_mapped_reads'].append(int(spl_line[5]))
+                        mapped_reads_total += int(spl_line[5])
+                    elif line.lstrip().startswith('Number of reads mapped to multiple loci'):
+                        sum_stats['multimapped_reads'].append(int(spl_line[8]))
+                        mapped_reads_total += int(spl_line[8])
+                    elif line.lstrip().startswith("Number of reads mapped to too many loci"):
+                        sum_stats["unmapped_reads_too_many_multimaps"].append(int(spl_line[9]))
+                        unmapped_reads_total += int(spl_line[9])
+                    elif line.lstrip().startswith("Number of reads unmapped: too many mismatches"):
+                        sum_stats["unmapped_reads_too_many_mismatches"].append(int(spl_line[8]))
+                        unmapped_reads_total += int(spl_line[8])
+                    elif line.lstrip().startswith("Number of reads unmapped: too short"):
+                        sum_stats["unmapped_reads_too_short"].append(int(spl_line[7]))
+                        unmapped_reads_total += int(spl_line[7])
+                    elif line.lstrip().startswith("Number of reads unmapped: other"):
+                        sum_stats["unmapped_reads_other"].append(int(spl_line[6]))    
+                        unmapped_reads_total += int(spl_line[6])
+            sum_stats["mapped_reads_total"].append(mapped_reads_total)
+            sum_stats["unmapped_reads_total"].append(unmapped_reads_total)
+        else:
+            with open(ali_stats, 'r') as f:
+                for line in f:
+                    spl_line = line.split()
+                    if line.startswith('# reads with at least one alignment'):
+                        sum_stats['mapped_reads_total'].append(int(spl_line[7]))
+                    elif line.startswith("# reads that failed to align"):
+                        sum_stats["unmapped_reads_total"].append(int(spl_line[6]))
+                    elif line.startswith("# reads with alignments suppressed due to -m"):
+                        sum_stats["unmapped_reads_too_many_multimaps"].append(int(spl_line[8]))
+        output_group = output_groups_list[idx]
+        with open(output_group, 'r') as f:
+            output_group_cnt = sum(1 for line in f)-1
+        sum_stats['groups'].append(output_group_cnt)
         output_clust = output_clust_list[idx]    
         with open(output_clust, 'r') as f:
             output_clust_cnt = sum(1 for line in f)-1
@@ -568,15 +702,89 @@ def get_summary_stats(configuration, samplename, reads, out_trim_reads2_list, co
         with open(annot, 'r') as f:
             annot_clust_cnt = sum(1 for line in f)-1
         sum_stats['annotated_clusters'].append(annot_clust_cnt)
+    
+    freq_dict = {
+    "raw_reads": [100] * len(samplename),
+    "reads_with_adapters": [x / y * 100 if y != 0 else 0 for x, y in zip(sum_stats["reads_with_adapters"], sum_stats["raw_reads"])],
+    "too_short_reads": [x / y * 100 if y != 0 else 0 for x, y in zip(sum_stats["too_short_reads"], sum_stats["raw_reads"])],
+    "passed_reads": [x / y * 100 if y != 0 else 0 for x, y in zip(sum_stats["passed_reads"], sum_stats["raw_reads"])],
+    "collapsed_reads": [x / y * 100 if y != 0 else 0 for x, y in zip(sum_stats["collapsed_reads"], sum_stats["raw_reads"])],
+    "rm_rep_reads": [x / y * 100 if y != 0 else [] for x, y in zip(sum_stats["rm_rep_reads"], sum_stats["raw_reads"])],
+    "mapped_reads_total": [x / y * 100 if all(y != 0 for y in sum_stats["collapsed_reads"]) and not sum_stats["rm_rep_reads"] else x / y * 100 if y != 0 else 0 for x, y in zip(sum_stats["mapped_reads_total"], sum_stats["rm_rep_reads"])],
+    "uniquely_mapped_reads": [x / y * 100 if all(y != 0 for y in sum_stats["mapped_reads_total"]) and sum_stats["uniquely_mapped_reads"] and sum_stats["mapped_reads_total"] else [] for x, y in zip(sum_stats["uniquely_mapped_reads"], sum_stats["mapped_reads_total"])],
+    "multimapped_reads": [x / y * 100 if all(y != 0 for y in sum_stats["mapped_reads_total"]) else [] for x, y in zip(sum_stats["multimapped_reads"], sum_stats["mapped_reads_total"])],
+    "unmapped_reads_total": [x / y * 100 if all(y != 0 for y in sum_stats["collapsed_reads"]) and not sum_stats["rm_rep_reads"] else x / y * 100 if y != 0 else 0 for x, y in zip(sum_stats["unmapped_reads_total"], sum_stats["rm_rep_reads"])],
+    "unmapped_reads_too_many_multimaps": [x / y * 100 if y != 0 else 0 for x, y in zip(sum_stats["unmapped_reads_too_many_multimaps"], sum_stats["unmapped_reads_total"])],
+    "unmapped_reads_too_many_mismatches": [x / y * 100 if all(y != 0 for y in sum_stats["unmapped_reads_total"]) else [] for x, y in zip(sum_stats["unmapped_reads_too_many_mismatches"], sum_stats["unmapped_reads_total"])],
+    "unmapped_reads_too_short": [x / y * 100 if all(y != 0 for y in sum_stats["unmapped_reads_total"]) else [] for x, y in zip(sum_stats["unmapped_reads_too_short"], sum_stats["unmapped_reads_total"])],
+    "unmapped_reads_other": [x / y * 100 if all(y != 0 for y in sum_stats["unmapped_reads_total"]) else [] for x, y in zip(sum_stats["unmapped_reads_other"], sum_stats["unmapped_reads_total"])],
+    "groups": [x / y * 100 if all(y != 0 for y in sum_stats["mapped_reads_total"]) else 0 for x, y in zip(sum_stats["groups"], sum_stats["mapped_reads_total"])],
+    "clusters": [x / y * 100 if all(y != 0 for y in sum_stats["groups"]) else 0 for x, y in zip(sum_stats["clusters"], sum_stats["groups"])],
+    "annotated_clusters": [x / y * 100 if all(y != 0 for y in sum_stats["clusters"]) else [] for x, y in zip(sum_stats["annotated_clusters"], sum_stats["clusters"])]
+    }
+        
+    if configuration['rem_rep'] in [False, 'False', '0', 0, 'no']:
+        freq_dict["mapped_reads_total"] = [x / y * 100 if all(y != 0 for y in sum_stats["collapsed_reads"]) else 0 for x, y in zip(sum_stats["mapped_reads_total"], sum_stats["collapsed_reads"])]
+        freq_dict["unmapped_reads_total"] = [x / y * 100 if all(y != 0 for y in sum_stats["collapsed_reads"]) else 0 for x, y in zip(sum_stats["unmapped_reads_total"], sum_stats["collapsed_reads"])]
+        
+
+    keys_to_delete = []
+    for x in sum_stats.keys():
+        if sum_stats[x] == []:
+            keys_to_delete.append(x)
+
+    for key in keys_to_delete:
+        del sum_stats[key]
+        del freq_dict[key]
+    
     sum_stats_tab = pd.DataFrame.from_dict(sum_stats, orient = 'index', columns = samplename)
-    sum_stats_tab.to_csv(out_file, sep = "\t", index=False)
-    #print(sum_stats)
+    freq_tab = pd.DataFrame.from_dict(freq_dict, orient = 'index', columns = ['{0}_freq'.format(sample) for sample in samplename])
+
+    final_df = pd.merge(sum_stats_tab, freq_tab, left_index=True, right_index=True)
+    if final_df.shape[0] == 11:
+        analysis_step = ['reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'alignment', 'alignment', 'alignment', 'clusters_calling', 'clusters_calling', 'clusters_calling']
+        denominator = ['raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'collapsed_reads', 'collapsed_reads', 'unmapped_reads_total', 'mapped_reads_total', 'groups', 'clusters']
+    elif final_df.shape[0] == 12:
+        analysis_step = ['reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'alignment', 'alignment', 'alignment', 'clusters_calling', 'clusters_calling', 'clusters_calling']
+        denominator = ['raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'rm_rep_reads', 'rm_rep_reads', 'unmapped_reads_total', 'mapped_reads_total', 'groups', 'clusters']
+    elif final_df.shape[0] == 16:
+        analysis_step = ['reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'alignment', 'alignment', 'alignment', 'alignment', 'alignment', 'alignment', 'alignment', 'alignment', 'clusters_calling', 'clusters_calling', 'clusters_calling']
+        denominator = ['raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'collampsed_reads', 'mapped_reads_total', 'mapped_reads_total', 'collapsed_reads', 'unmapped_reads_total', 'unmapped_reads_total', 'unmapped_reads_total', 'unmapped_reads_total', 'mapped_reads_total', 'groups', 'clusters']
+    elif final_df.shape[0] == 17:
+        analysis_step = ['reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'reads_processing', 'alignment', 'alignment', 'alignment', 'alignment', 'alignment', 'alignment', 'alignment', 'alignment', 'clusters_calling', 'clusters_calling', 'clusters_calling']
+        denominator = ['raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'raw_reads', 'rm_rep_reads', 'mapped_reads_total', 'mapped_reads_total', 'rm_reps_reads', 'unmapped_reads_total', 'unmapped_reads_total', 'unmapped_reads_total', 'unmapped_reads_total', 'mapped_reads_total', 'groups', 'clusters']
+    
+    final_df["analysis_step"] = analysis_step
+    final_df["denominator"] = denominator
+    final_df.to_csv(out_file, sep = "\t", index=True)
+    print(final_df)
     
     
+    return out_file   
+    
+def prepare_plots(configuration, sum_stats):
+    
+    sum_stats = sum_stats
+    outdir = os.path.join(cwd, 'output')
+    pp2_dir = configuration['parpipe2_dir']
+    generate_plots_R = os.path.join(pp2_dir, 'bin', 'generate_plots.R')
+    logfile =  os.path.join(outdir, 'summary_plots.{0}.log'.format(ts))
+    errfile =  os.path.join(outdir, 'summary_plots.{0}.err'.format(ts))
+    
+    command = ['Rscript', generate_plots_R, sum_stats, outdir, ts, '>', logfile, '2>', errfile]
+    
+    print("\nPreparing summary plots...")
+    outcode = os.WEXITSTATUS(os.system(" ".join(command)))    
+    if outcode == 0:     
+        print("Summary plots prepared")
+    else:
+        print("an ERROR occured during summary plots preparation :(\ncheck {0} for details".format(errfile))
+
 def main(args):
     config_file = os.path.abspath(args.config_file)
     cfg = read_configfile(config_file)
     threads = cfg['threads']
+    aligner = cfg['aligner']
     reads = os.path.abspath(args.reads)    
     samplename = args.samplename
     if args.umi:
@@ -585,18 +793,25 @@ def main(args):
         umi = None
         
     genome, annotation, genome_2bit, main_annot_rds  = prepare_genome_and_annotation(cfg)
-    star_idx_outdir = prepare_star_index(cfg, genome, annotation, threads)
-    trim_reads1 = trim_adapters_round1(cfg, reads, samplename)
+    if aligner in ['S', 's', 'STAR', 'star', 'Star']:
+        star_idx_outdir = prepare_star_index(cfg, genome, annotation, threads)
+    else :
+        bowtie_idx_outdir = prepare_bowtie_index(cfg, genome, threads)
+    trim_reads1, cutadapt_log = trim_adapters_round1(cfg, reads, samplename)
     trim_reads2 = trim_adapters_round2(cfg, samplename, trim_reads1)
     collapsed_reads = collapse_reads(samplename, trim_reads2, umi)
     rm_rep_reads = star_rm_reps(cfg, samplename, collapsed_reads, threads)
-    out_sam = star_genome_map(cfg, samplename, star_idx_outdir, rm_rep_reads, threads)
-    out_clust = config_and_run_PARalyzer(cfg, samplename, out_sam, genome_2bit)
+    if aligner in ['S', 's', 'STAR', 'star', 'Star']:
+        out_sam, ali_logs = star_genome_map(cfg, samplename, star_idx_outdir, rm_rep_reads, threads)
+    else:
+        out_sam, ali_logs = bowtie_genome_map(cfg, samplename, bowtie_idx_outdir, rm_rep_reads, threads)
+    out_groups, out_clust, = config_and_run_PARalyzer(cfg, samplename, out_sam, genome_2bit, umi)
     out_stats = run_clusters_stats(samplename, out_sam, out_clust, genome)
     annot = run_annot(cfg, samplename, out_stats, main_annot_rds)
-    sum_stats = get_summary_stats(cfg, samplename, reads, trim_reads2, collapsed_reads, rm_rep_reads, out_sam, out_clust, annot)
+    sum_stats = get_summary_stats(cfg, samplename, reads, cutadapt_log, collapsed_reads, rm_rep_reads, ali_logs, out_groups, out_clust, annot)
+    prepare_plots(cfg, sum_stats)
     
-    print('PAR-PIPE2 FINISHED REQUESTED ANALYSIS SUCCESFULLY FOR JOB {0}. CHECK YOUR OUTPUT FILES'.format(ts))
+    print('\nPAR-PIPE2 FINISHED REQUESTED ANALYSIS SUCCESFULLY FOR JOB {0}. CHECK YOUR OUTPUT FILES'.format(ts))
     
    
                
