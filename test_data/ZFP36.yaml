@@ -1,5 +1,6 @@
 {parpipe2_dir : "", #(REQUIRED!!!) path where you clone the repo 
 threads : 4, #(OPTIONAL) number of threads, default 4 
+aligner : "", #(OPTIONAL) default bowtie
 #ANNOTATION
 genome_fasta : "", #(OPTIONAL) you can specify your own genome file, if not specified GRCh38 primary assembly from gencode v45 will be automatically downloaded (OPTIONAL)
 gtf : "", #(OPTIONAL) you can specify your own gtf file (compatible with genome), if not specified basic annotation for GRCh38 primary assembly from gencode v45 will be automatically downloaded
