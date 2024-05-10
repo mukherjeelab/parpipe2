@@ -3,6 +3,7 @@ import sys
 import shutil
 import argparse
 import yaml
+import concurrent.futures
 import pysam
 import pysamstats
 import math
@@ -76,7 +77,7 @@ def prepare_genome_and_annotation(configuration):
             if outcode_gtf == 0:     
                 print("Gtf unpacked succesfully")
             else:
-                print("n ERROR occured during gtf file unpacking :(\ncheck {0} for details".format(errfile)) 
+                print("An ERROR occured during gtf file unpacking :(\ncheck {0} for details".format(errfile)) 
         else:
             print('Genome and annotation files already exist')
                       
@@ -423,9 +424,9 @@ def bowtie_genome_map(configuration, samplename, bowtie_index_outdir, rm_rep_rea
         ali_log_list.append(errfile)
         
         if configuration['bowtie_map_params'] == '' or configuration['bowtie_map_params'] == None:
-            bowtie_command = ['bowtie', genome_idx, '-v 1 -m 10 --best --strata -p', str(threads), '-S -f', infile, '--quiet', '2>>', errfile, '| samtools view -hS -F 4 - >', output_sam, '2>>', errfile]
+            bowtie_command = ['bowtie', genome_idx, '-v 1 -m 10 --best --strata -p', str(threads), '-S -f', infile, '--quiet', '2>>', errfile, '| samtools view -hS -F 4 - | samtools sort -O SAM - -o', output_sam, '>>', logfile, '2>>', errfile]
         else:
-            bowtie_command = ['bowtie', genome_idx] + configuration['bowtie_map_params'].split(',') + ['-f', infile,  '2>>', errfile, '| samtools view -hS -F 4 - >', output_sam, '2>>', errfile]
+            bowtie_command = ['bowtie', genome_idx] + configuration['bowtie_map_params'].split(',') + ['-f', infile,  '2>>', errfile, '| samtools view -hS -F 4 - | samtools sort -O SAM - -o', output_sam, '>>', logfile, '2>>', errfile]
             
         print("Running bowtie to align to genome for {0}...".format(sample))
         
@@ -437,9 +438,227 @@ def bowtie_genome_map(configuration, samplename, bowtie_index_outdir, rm_rep_rea
             
     return output_sam_list, ali_log_list
     
+def annotate_mapped_reads(configuration, samplename, output_sam_list, main_annot_rds):
     
+    samplename = samplename.split(",") 
+    if not os.path.exists('total_conv_stats'):
+        os.mkdir('total_conv_stats')
+    outdir = os.path.join(cwd, 'total_conv_stats')
+    #d0_list = []
+    #d1_list = []
+    #d2_list = []
+    full_bed_mm_list = []
+    merged_sam_mm_list = []
+    merged_sam_list = []
+    out_genome_annot_list = []
+    #d0_list_bed = []
+    #d1_list_bed = []
+    #d2_list_bed = []
+    genome_annotR = os.path.join(pp2_dir, 'bin', 'genome_annot.R')
+    pp2_dir = configuration['parpipe2_dir']
+    if not configuration['annot_rank'] in ['', None, False, 'False', 0, '0']: 
+        annot_rank_file = configuration['annot_rank']
+    else:
+        annot_rank_file = os.path.join(pp2_dir, 'annotation', 'annot_categories.txt')
+    annotR = os.path.join(pp2_dir, 'bin', 'annot.R')
+    main_annot = main_annot_rds
+    trna_annot = os.path.join(pp2_dir, 'annotation', 'rds_files','trna.rds')
+    repeats_annot = os.path.join(pp2_dir, 'annotation', 'rds_files','repeats.rds')
     
-def config_and_run_PARalyzer(configuration, samplename, output_sam_list, genome_2bit, umi = None):
+    for idx, sample in enumerate(samplename):
+        infile = output_sam_list[idx]
+        logfile =  os.path.join(cwd, 'total_conv_stats', '{0}_annot_mapped_reads.{1}.log'.format(sample,ts))
+        errfile =  os.path.join(cwd, 'total_conv_stats', '{0}_annot_mapped_reads.{1}.err'.format(sample,ts))
+        out_d0 = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.d0.sam'.format(sample,ts))
+        out_d1 = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.d1.sam'.format(sample,ts))
+        out_d2 = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.d2.sam'.format(sample,ts))
+        out_d0_bed = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.d0.bed'.format(sample,ts))
+        out_d1_bed = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.d1.bed'.format(sample,ts))
+        out_d2_bed = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.d2.bed'.format(sample,ts))
+        full_bed_mm = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.mm.bed'.format(sample,ts))
+        merged_sam_file = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.merged_sorted.sam'.format(sample,ts))
+        merged_sam_mm_file = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.mm_merged_sorted.sam'.format(sample,ts))
+        out_genome_annot = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.genome_annot.tsv'.format(sample,ts))
+        #d0_list.append(out_d0)
+        #d1_list.append(out_d1)
+        #d2_list.append(out_d2)
+        full_bed_list.append(full_bed)
+        merged_sam_list.append(merged_sam_file)
+        merged_sam_mm_list.append(merged_sam_mm_file)
+        out_genome_annot_list.append(out_genome_annot)
+        #d0_list_bed.append(out_d0_bed)
+        #d1_list_bed.append(out_d1_bed)
+        #d2_list_bed.append(out_d2_bed)
+        command_d0 = ["samtools view -h -e '[NM]==0' -O SAM -o", out_d0, infile, '>', logfile, '2>', errfile]
+        command_d1 = ["samtools view -h -e '[NM]==1' -O SAM -o", out_d1, infile, '>>', logfile, '2>>', errfile]
+        command_d2 = ["samtools view -h -e '[NM]==2' -O SAM -o", out_d2, infile, '>>', logfile, '2>>', errfile]
+        command_d0_bed = ["bedtools bamtobed -i", out_d0, '>', out_d0_bed , '2>>', errfile]
+        command_d1_bed = ["bedtools bamtobed -i", out_d1, '>', out_d1_bed , '2>>', errfile]
+        command_d2_bed = ["bedtools bamtobed -i", out_d2, '>', out_d2_bed , '2>>', errfile]
+        command_merge_sam = ['samtools merge -', out_d0, out_d1, out_d2, '| samtools sort -O sam -o', merged_sam_file]
+        command_merge_sam_mm = ['samtools merge -', out_d1, out_d2, '| samtools sort -O sam -o', merged_sam_mm_file]
+        command_full_bed = ["bedtools bamtobed -i", merged_sam_mm_file, '| bedtools merge -s -c 6 -o distinct >', full_bed_mm , '2>>', errfile]
+        command_annot = ['Rscript', genome_annotR, outdir, annot_rank_file, main_annot, trna_annot, repeats_annot, out_d0_bed, out_d1_bed, out_d2_bed, out_genome_annot,'>', logfile, '2>', errfile]
+        print("Spliting reads according to edit distance for {0}...".format(sample))
+        outcode_d0 = os.WEXITSTATUS(os.system(" ".join(command_d0)))    
+        if outcode_d0 == 0:     
+            print("Distance 0 SAM file created succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during distance 0 SAM file creation :(\ncheck {0} for details".format(errfile)) 
+        outcode_d0_bed = os.WEXITSTATUS(os.system(" ".join(command_d0_bed)))    
+        if outcode_d0_bed == 0:     
+            print("Distance 0 BED file created succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during distance 0 BED file creation :(\ncheck {0} for details".format(errfile)) 
+        outcode_d1 = os.WEXITSTATUS(os.system(" ".join(command_d1)))    
+        if outcode_d1 == 0:     
+            print("Distance 1 SAM file created succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during distance 1 SAM file creation :(\ncheck {0} for details".format(errfile)) 
+        outcode_d1_bed = os.WEXITSTATUS(os.system(" ".join(command_d1_bed)))    
+        if outcode_d1_bed == 0:     
+            print("Distance 1 BED file created succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during distance 1 BED file creation :(\ncheck {0} for details".format(errfile)) 
+        outcode_d2 = os.WEXITSTATUS(os.system(" ".join(command_d2)))    
+        if outcode_d2 == 0:     
+            print("Distance 2 SAM file created succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during distance 2 SAM file creation :(\ncheck {0} for details".format(errfile)) 
+        outcode_d2_bed = os.WEXITSTATUS(os.system(" ".join(command_d2_bed)))    
+        if outcode_d2_bed == 0:     
+            print("Distance 2 BED file created succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during distance 2 BED file creation :(\ncheck {0} for details".format(errfile)) 
+        outcode_merge_sam = os.WEXITSTATUS(os.system(" ".join(command_merge_sam)))
+        if outcode_merge_sam == 0:     
+            print("Merged SAM file created succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during SAM file merging :(\ncheck {0} for details".format(errfile))  
+        outcode_full_bed = os.WEXITSTATUS(os.system(" ".join(command_full_bed)))   
+        if outcode_full_bed == 0:     
+            print("Merged BED file created succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during BED file merging :(\ncheck {0} for details".format(errfile)) 
+        print("Running genome annotation for {0}...".format(sample))
+        outcode_ga = os.WEXITSTATUS(os.system(" ".join(command_annot))) 
+            
+    return merged_sam_list, full_bed_list, out_genome_annot_list #,annot_genome (from r script)
+    #merge samfiles and use it as input
+        
+
+        
+def genome_conv_stats(samplename, merged_sam_list, full_bed_list, out_genome_annot_list, genome):#, annot_genome):
+    samplename = samplename.split(",") 
+    total_conv_list = []
+    
+    for idx, sample in enumerate(samplename):
+        samfile = merged_sam_list[idx]
+        bamfile = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.merged_sorted.bam'.format(sample,ts))
+        bedfile = full_bed_list[idx]
+        output_total_conv = os.path.join(cwd, 'total_conv_stats', '{0}.{1}.total_conv_stats.tsv'.format(sample,ts))
+        total_conv_list.append(output_total_conv)
+        logfile =  os.path.join(cwd, 'total_conv_stats', '{0}_total_conv_stats.{1}.log'.format(sample,ts))
+        errfile =  os.path.join(cwd, 'total_conv_stats', '{0}_total_conv_stats.{1}.err'.format(sample,ts))
+        genome_ref = genome
+        
+        command_sam_bam = ["samtools view -bS  -o", bamfile, samfile, '>', logfile, '2>', errfile]
+        command_bam_idx = ["samtools index", bamfile, '>>', logfile, '2>>', errfile]
+        print("Converting meged SAM to merged BAM for {0}".format(sample))
+        outcode_sam_bam = os.WEXITSTATUS(os.system(" ".join(command_sam_bam)))   
+        if outcode_sam_bam == 0:     
+            print("Coversion finished succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during SAM to BAM conversion :(\ncheck {0} for details".format(errfile)) 
+        print("Indexing merged BAM for {0}".format(sample))
+        outcode_bam_idx = os.WEXITSTATUS(os.system(" ".join(command_bam_idx)))   
+        if outcode_bam_idx == 0:     
+            print("Indexing finished succesfully for {0}\ncheck {1} for details".format(sample,logfile))
+        else:
+            print("an ERROR occured during BAM indexing :(\ncheck {0} for details".format(errfile)) 
+        
+        
+        conv_stats = {"AC": 0,
+        "AG" : 0,
+        "AT" : 0,
+        "Adel": 0,
+        "CA" : 0,
+        "CG" : 0,
+        "CT": 0,
+        "Cdel" : 0,
+        "GA" : 0,
+        "GC" : 0,
+        "GT" : 0,
+        "Gdel" : 0,
+        "TA" : 0,
+        "TC" : 0,
+        "TG" : 0,
+        "Tdel": 0,
+        "other" : 0
+        }
+        
+        bam = pysam.AlignmentFile(bamfile, "rb")
+        print("Generating genome-wide conversion statistics... (this step may be quite long)...")
+        with open (bedfile, 'r') as f:
+            for line in f:
+                bed_line = line.split('\t')
+                
+                for rec in pysamstats.stat_variation_strand(bam, chrom = bed_line[0], start=int(bed_line[1]), end = int(bed_line[2]), pad=True, truncate=True, fafile = genome_ref, one_based=False):
+                    if bed_line[3] == "+":
+                        if rec['ref'] == 'A':
+                            conv_stats["AC"] += int(rec['C_fwd'])
+                            conv_stats["AG"] += int(rec['G_fwd']) 
+                            conv_stats["AT"] += int(rec['T_fwd'])
+                            conv_stats["Adel"] += int(rec['deletions_fwd'])
+                        elif rec['ref'] == 'C':
+                            conv_stats["CA"] += int(rec['A_fwd'])
+                            conv_stats["CG"] += int(rec['G_fwd']) 
+                            conv_stats["CT"] += int(rec['T_fwd'])
+                            conv_stats["Cdel"] += int(rec['deletions_fwd'])
+                        elif rec['ref'] == 'G':
+                            conv_stats["GA"] += int(rec['A_fwd'])
+                            conv_stats["GC"] += int(rec['C_fwd']) 
+                            conv_stats["GT"] += int(rec['T_fwd'])
+                            conv_stats["Gdel"] += int(rec['deletions_fwd'])
+                        elif rec['ref'] == 'T':
+                            conv_stats["TA"] += int(rec['A_fwd'])
+                            conv_stats["TC"] += int(rec['C_fwd']) 
+                            conv_stats["TG"] += int(rec['G_fwd'])
+                            conv_stats["Tdel"] += int(rec['deletions_fwd'])
+                    else:
+                        if rec['ref'] == 'T':
+                            conv_stats["AC"] += int(rec['G_rev'])
+                            conv_stats["AG"] += int(rec['C_rev']) 
+                            conv_stats["AT"] += int(rec['A_rev'])
+                            conv_stats["Adel"] += int(rec['deletions_rev'])
+                        elif rec['ref'] == 'G':
+                            conv_stats["CA"] += int(rec['T_rev'])
+                            conv_stats["CG"] += int(rec['C_rev']) 
+                            conv_stats["CT"] += int(rec['A_rev'])
+                            conv_stats["Cdel"] += int(rec['deletions_rev'])
+                        elif rec['ref'] == 'C':
+                            conv_stats["GA"] += int(rec['T_rev'])
+                            conv_stats["GC"] += int(rec['G_rev']) 
+                            conv_stats["GT"] += int(rec['A_rev'])
+                            conv_stats["Gdel"] += int(rec['deletions_rev'])
+                        elif rec['ref'] == 'A':
+                            conv_stats["TA"] += int(rec['T_rev'])
+                            conv_stats["TC"] += int(rec['G_rev']) 
+                            conv_stats["TG"] += int(rec['C_rev'])
+                            conv_stats["Tdel"] += int(rec['deletions_rev'])
+
+
+
+        bam.close()
+
+         
+        conv_tab = pd.DataFrame.from_dict(conv_stats, orient = 'index', columns = ['counts'])
+        conv_tab.index.name = 'conversion'
+        conv_tab.reset_index(inplace=True)
+        conv_tab.to_csv(output_total_conv, sep = "\t", index=False)
+
+        print("Genome-wide conversion statistics generated succesfully. Check {0} for details".format(output_total_conv))
+def config_and_run_PARalyzer(configuration, samplename, output_sam_list, genome_2bit):
 
     if not os.path.exists('PARalyzer'):
         os.mkdir('PARalyzer')
@@ -468,7 +687,7 @@ def config_and_run_PARalyzer(configuration, samplename, output_sam_list, genome_
                 ini_file.write('HAFNER_APPROACH\n\n')
             elif configuration['signal_extension'] == 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL':
                 ini_file.write('ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL={0}\n\n'.format(configuration['ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL']))
-            if umi:
+            if not configuration['use_pcr_duplicates'] in ["TRUE", "True", True, "true", "T"]:
                 ini_file.write('GENOME_2BIT_FILE={0}\nSAM_FILE={1}\n\nOUTPUT_DISTRIBUTIONS_FILE={2}.distribution\nOUTPUT_GROUPS_FILE={2}.groups\nOUTPUT_CLUSTERS_FILE={2}.clusters\nOUTPUT_READS_FILE={2}_PARalyzer_Utilized.sam\n\n'.format(genome_2bit,sam_file,str(output_clust).replace('.clusters','')))
             else: 
                 ini_file.write('GENOME_2BIT_FILE={0}\nSAM_FILE={1}=COLLAPSED\n\nOUTPUT_DISTRIBUTIONS_FILE={2}.distribution\nOUTPUT_GROUPS_FILE={2}.groups\nOUTPUT_CLUSTERS_FILE={2}.clusters\nOUTPUT_READS_FILE={2}_PARalyzer_Utilized.sam\n\n'.format(genome_2bit,sam_file,str(output_clust).replace('.clusters','')))
@@ -805,7 +1024,9 @@ def main(args):
         out_sam, ali_logs = star_genome_map(cfg, samplename, star_idx_outdir, rm_rep_reads, threads)
     else:
         out_sam, ali_logs = bowtie_genome_map(cfg, samplename, bowtie_idx_outdir, rm_rep_reads, threads)
-    out_groups, out_clust, = config_and_run_PARalyzer(cfg, samplename, out_sam, genome_2bit, umi)
+    #merged_sam, merged_bed, genome_annot = annotate_mapped_reads(cfg, samplename, out_sam, main_annot_rds)
+    #genome_conv_stats(samplename, merged_sam, merged_bed, genome_annot, genome)
+    out_groups, out_clust, = config_and_run_PARalyzer(cfg, samplename, out_sam, genome_2bit)
     out_stats = run_clusters_stats(samplename, out_sam, out_clust, genome)
     annot = run_annot(cfg, samplename, out_stats, main_annot_rds)
     sum_stats = get_summary_stats(cfg, samplename, reads, cutadapt_log, collapsed_reads, rm_rep_reads, ali_logs, out_groups, out_clust, annot)

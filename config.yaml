@@ -38,5 +38,6 @@ MINIMUM_READ_LENGTH : 15, #(OPTIONAL), default 15
 MAXIMUM_NUMBER_OF_NON_CONVERSION_MISMATCHES : 1, #(OPTIONAL), default 1
 signal_extension : "EXTEND_BY_READ", ##(OPTIONAL) one of 'EXTEND_BY_READ', 'HAFNER_APPROACH', 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL', default 'EXTEND_BY_READ'
 ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL : 2, #only valid when signal_extension : 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL', default 2
+use_pcr_duplicates : "", #(OPTIONAL) default is False; change to True to force PARalyzer to treat pcr duplicates as individual reads (will increase number of clusters, but also false positives)
 #additional parameters , (OPTIONAL) summary statistics file prefix, default samplenames separated by '_' if > 1
 sum_stats_prefix : ""}
