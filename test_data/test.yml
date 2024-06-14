@@ -1,0 +1,44 @@
+{input_files: "/media/marcin/Elements/parpipe2/ZFP36/ZFP36.fq.gz,/media/marcin/Elements/parpipe2/ZFP36/ZFP36_toy.fq.gz", #(REQUIRED!!!) absolute path to input reads
+parpipe2_dir : "/media/marcin/Elements/parpipe2", #(REQUIRED!!!) path where you clone the repo 
+threads : 16, #(OPTIONAL) number of threads, default 4 
+aligner : "", #(OPTIONAL) default bowtie, use 'S', 's', 'STAR' or 'star' to switch to STAR
+#ANNOTATION
+genome_fasta : "", #(OPTIONAL) you can specify your own genome file, if not specified GRCh38 primary assembly from gencode v45 will be automatically downloaded (OPTIONAL)
+gtf : "", #(OPTIONAL) you can specify your own gtf file (compatible with genome), if not specified basic annotation for GRCh38 primary assembly from gencode v45 will be automatically downloaded
+genome_version: "", #(OPTIONAL) you can specify your own genome/gtf version; default: GRCh38 primary assembly from gencode v45
+annot_rank : "", #(OPTIONAL) you can specify your own annotation rank file ,suggesed when using your own genome; default: parpipe2_dir/annotation/annot_ranks.txt
+#cutadapt parameters
+three_prime_adapter : "TCGTATGCCGTCTTCTGCTTG", #(REQUIRED!!!) put your 3'adapter sequence
+five_prime_adapter : "AATGATACGGCGACCACCGACAGGTTCAGAGTTCTACAGTCCGACGATC", #(REQUIRED!!!) your 5'adapter sequence (REQUIRED TO RUN PAR-PIPE2)
+nextseq : False, #(OPTIONAL) put True or 1 if your sequencing run was on NextSeq machine
+cutadapt_params1 : "-b CGTACGCGGGTTTAAACGA,-b,CTCATCTTGGTCGTACGCGGAATAGTTTAAACTGT,-n,3,-j,0,-m,15,-M,50,--max-n,1", #(OPTIONAL) but highly reccomended - additional cutadapt parameters
+cutadapt_params2 : "", #(OPTIONAL) if you want to perform second trimming - all cutadapt parameters (including adapters)
+#STAR parameters
+rem_rep : "False", #(OPTIONAL) default: True, if you wnt to skip set False or 0
+rep_idx : "", #(OPTIONAL) default: parpipe2_dir/annotation/rep_idx
+star_index_dir : "", #(OPTIONAL) default - will be created automatically in your working dir
+star_index_params : "", #(OPTIONAL) default set is: 
+star_rem_reps_params : "", #(OPTIONAL) default set is: "--runMode,alignReads,--genomeLoad,NoSharedMemory,--alignEndsType,EndToEnd,--outSAMunmapped,Within,--outFilterMultimapNmax,30,--outFilterMultimapScoreRange,1,--outSAMtype,BAM,Unsorted,--outFilterType,BySJout,--outBAMcompression,10,--outReadsUnmapped,Fastx,--outFilterScoreMin,10,--outSAMattrRGline,ID:foo,--outSAMattributes,All,--outSAMmode,Full"
+star_map_params : "", #(OPTIONAL) default set is: "--runMode,alignReads,--genomeLoad,NoSharedMemory,--alignEndsType,EndToEnd,--outSAMunmapped,Within,--outFilterMultimapNmax,1,--outFilterMultimapScoreRange,1,--outSAMattributes,All,--outSAMtype,BAM,Unsorted,--outFilterType,BySJout,--outFilterMismatchNoverReadLmax,0.05,--outSAMattrRGline,ID:foo,--outStd,Log,--outBAMcompression,10,--outSAMmode,Full"
+#bowtie parameters
+bowtie_index_dir : "", #(OPTIONAL) default - will be created automatically in your working dir
+bowtie_index_params : "", #(OPTIONAL)
+bowtie_map_params : "", #(OPTIONAL) default set is: '-v 1 -m 10 --best --strata -S'
+#PARalyzer parameters
+paralyzer_memory : "4G", #(OPTIONAL), default "4G"
+BANDWIDTH : 3, #(OPTIONAL) , default 3
+CONVERSION : "T>C", #(OPTIONAL), default "T>C", possible choices "T>C", "G>A"
+MINIMUM_READ_COUNT_PER_GROUP : 5, #(OPTIONAL), default 5
+MINIMUM_READ_COUNT_PER_CLUSTER : 2, #(OPTIONAL), default 2
+MINIMUM_READ_COUNT_FOR_KDE : 3, #(OPTIONAL), default 3
+MINIMUM_CLUSTER_SIZE : 11, #(OPTIONAL), default 11
+MINIMUM_CONVERSION_LOCATIONS_FOR_CLUSTER : 2, #(OPTIONAL), default 2
+MINIMUM_CONVERSION_COUNT_FOR_CLUSTER : 2, #(OPTIONAL), default 2
+MINIMUM_READ_COUNT_FOR_CLUSTER_INCLUSION : 1, #(OPTIONAL), default 1
+MINIMUM_READ_LENGTH : 15, #(OPTIONAL), default 15
+MAXIMUM_NUMBER_OF_NON_CONVERSION_MISMATCHES : 1, #(OPTIONAL), default 1
+signal_extension : "EXTEND_BY_READ", ##(OPTIONAL) one of 'EXTEND_BY_READ', 'HAFNER_APPROACH', 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL', default 'EXTEND_BY_READ'
+ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL : 2, #only valid when signal_extension : 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL', default 2
+use_pcr_duplicates : "True", #(OPTIONAL) default is False; change to True to force PARalyzer to treat pcr duplicates as individual reads (will increase number of clusters, but also false positives)
+#additional parameters , (OPTIONAL) summary statistics file prefix, default samplenames separated by '_' if > 1
+sum_stats_prefix : "ZFP36"}
