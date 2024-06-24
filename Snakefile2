@@ -1,0 +1,632 @@
+import os
+import sys
+import json
+
+def get_input(wildcards):
+    ext = sample_names[wildcards.sample]
+    return f"reads/{wildcards.sample}.{ext}"
+    
+def get_index_path(aligner):
+    with open("metadata.json") as f:
+        data = json.load(f)
+    return data[f"{aligner}_index"]
+
+def get_2bit_path():
+    with open("metadata.json") as f:
+        data = json.load(f)
+    return data["genome_2bit"]
+
+def get_genome_path():
+    with open("metadata.json") as f:
+        data = json.load(f)
+    return data["genome"]
+    
+def main_annot_path():
+    with open("metadata.json") as f:
+        data = json.load(f)
+    return data["main_annot_rds"]
+
+params = {
+    #exec and input paths and hardware settings
+    'parpipe2_dir': "", #(REQUIRED)absolute path must be provided by user in config file
+    'input_files': "", #(REQUIRED)absolute path(s) must be provided by user in config file, if > 1, comma separated
+    'threads': 4,
+    #genome file and genomic annotations
+    'organism' : "hs", #(OPTIONAL) allowed values are "hs" for human and "mm" for mouse
+    'genome_fasta' : "", #(OPTIONAL) you can specify your own genome file, if not specified GRCh38/GRCm39 primary assembly from gencode v45 will be automatically downloaded
+    'gtf' : "", #(OPTIONAL) you can specify your own gtf file (compatible with genome), if not specified basic annotation for GRCh38/GRCm39 primary assembly from gencode v45 will be automatically downloaded
+    'genome_version' : "", #(OPTIONAL) you can specify your own genome/gtf version; default: GRCh38/GRCm39 primary assembly from gencode v45
+    'annot_rank' : "", #(OPTIONAL) you can specify your own annotation rank file, suggesed when using your own genome; default: parpipe2_dir/annotation/annot_ranks.txt
+    #adapter trimming and reads collapsing
+    'three_prime_adapter' : "", #(REQUIRED!!!) put your 3'adapter sequence
+    'five_prime_adapter' : "", #(REQUIRED!!!) your 5'adapter sequence
+    'nextseq' : False, #(OPTIONAL) put True or 1 if your sequencing run was on NextSeq machine
+    'cutadapt_params1' : "-b CGTACGCGGGTTTAAACGA -b CTCATCTTGGTCGTACGCGGAATAGTTTAAACTGT -n 3 -j 0 -m 15 -M 50 --max-n 1", #(OPTIONAL) - additional cutadapt parameters
+    'cutadapt_params2' : "", #(OPTIONAL) leave empty to ommit this step, if you want to perform second trimming put all cutadapt parameters for 2nd trimming here (including adapters)
+    'umi' : "", #(OPTIONAL) leave empty if you don't have UMIs, for 5' UMIs positive integer equal UMI length, if 3'UMIs - negative integer equal UMI length
+    #removing repetitive elements
+    'rem_rep' : "",  #(OPTIONAL) leave empty to omit this step, put True or 1 if you want to remove repetitive elements
+    'rep_idx' : "", #(OPTIONAL) default: parpipe2_dir/annotation/{organism}/rep_idx
+    'star_rem_reps_params' : "--runMode alignReads --genomeLoad NoSharedMemory --alignEndsType EndToEnd --outSAMunmapped Within --outFilterMultimapNmax 30 --outFilterMultimapScoreRange 1 --outSAMtype BAM Unsorted --outFilterType BySJout --outBAMcompression 10 --outReadsUnmapped Fastx --outFilterScoreMin 10 --outSAMattrRGline ID:foo --outSAMattributes All --outSAMmode Full", #(OPTIONAL)
+    #genome alignment
+    'aligner' : "",  #(OPTIONAL) default bowtie, use 'S', 's', 'STAR' or 'star' to switch to STAR
+    'bowtie_index_dir' : "", #(OPTIONAL) default - will be created automatically in your working dir if aligner will be set to bowtie
+    'bowtie_index_params' : "", #(OPTIONAL)
+    'bowtie_map_params' : "-v 1 -m 10 --best --strata -S", #(OPTIONAL)
+    'star_index_dir' : "", #(OPTIONAL) default - will be created automatically in your working dir if aligner will be set to STAR
+    'star_index_params' : "--runMode genomeGenerate --sjdbOverhang 100", #(OPTIONAL)
+    'star_map_params' : "--runMode alignReads --genomeLoad NoSharedMemory --alignEndsType EndToEnd --outSAMunmapped Within --outFilterMultimapNmax 1 --outFilterMultimapScoreRange 1 --outSAMattributes All --outSAMtype BAM Unsorted --outFilterType BySJout --outFilterMismatchNoverReadLmax 0.05 --outSAMattrRGline ID:foo --outStd Log --outBAMcompression 10 --outSAMmode Full", #(OPTIONAL)
+    #PARalyzer params
+    'paralyzer_memory' : "4G", #(OPTIONAL)
+    'BANDWIDTH' : 3, #(OPTIONAL)
+    'CONVERSION' : "T>C", #(OPTIONAL), possible choices "T>C", "G>A"
+    'MINIMUM_READ_COUNT_PER_GROUP' : 5, #(OPTIONAL),
+    'MINIMUM_READ_COUNT_PER_CLUSTER' : 2, #(OPTIONAL)
+    'MINIMUM_READ_COUNT_FOR_KDE' : 3, #(OPTIONAL)
+    'MINIMUM_CLUSTER_SIZE' : 11, #(OPTIONAL)
+    'MINIMUM_CONVERSION_LOCATIONS_FOR_CLUSTER' : 2, #(OPTIONAL)
+    'MINIMUM_CONVERSION_COUNT_FOR_CLUSTER' : 2, #(OPTIONAL)
+    'MINIMUM_READ_COUNT_FOR_CLUSTER_INCLUSION' : 1, #(OPTIONAL)
+    'MINIMUM_READ_LENGTH' : 15, #(OPTIONAL)
+    'MAXIMUM_NUMBER_OF_NON_CONVERSION_MISMATCHES' : 1, #(OPTIONAL)
+    'signal_extension' : "EXTEND_BY_READ", ##(OPTIONAL) one of 'EXTEND_BY_READ', 'HAFNER_APPROACH', 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL'
+    'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL' : 2, #only valid when signal_extension : 'ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL'
+    'use_pcr_duplicates' : False, #(OPTIONAL) change to True to force PARalyzer to treat pcr duplicates as individual reads (will increase number of clusters, but also false positives)
+    #motif enrichment params
+    'motif_enrichment_method' : "meme",#(OPTIONAL), possible choices "meme", "dreme", "streme"
+    'motif_enrichment_params' : "-dna -mod anr -evt 0.05 -minw 3", #(OPTIONAL); be aware that some prameters are specific for enrichment method chosen
+}
+
+# Override default parameters with config values if provided
+for key in config:
+    if config[key] is not None and config[key] != "":
+        params[key] = config[key]
+
+# Validate required parameters
+required_params = ['parpipe2_dir', 'input_files', 'three_prime_adapter', 'five_prime_adapter']
+for req_param in required_params:
+    if params[req_param] in ["", None]:
+        raise ValueError(f"{req_param} must be provided in config file")
+
+# Construct annot_rank if not specified in config
+if not params['annot_rank']:
+    params['annot_rank'] = os.path.join(params['parpipe2_dir'], "annotation", params["organism"], "annot_categories.txt")
+    
+# Construct rep_idx if not specified in config
+if not params['rep_idx']:
+    params['rep_idx'] = os.path.join(params['parpipe2_dir'], "annotation", params["organism"], "rep_idx")
+print(params)
+
+config_file_path = None
+if "--configfile" in sys.argv:
+    # Get the index of the --configfile argument
+    configfile_index = sys.argv.index("--configfile")
+    
+    # Retrieve the path to the config file from the next argument
+    config_file_path = sys.argv[configfile_index + 1]
+    
+    print("Config file path:", config_file_path)
+#else:
+#    raise ValueError("No config file path specified via command line arguments.")
+
+# Extract number of cores from the params
+num_cores = params["threads"]
+# Extract input file names from the params
+input_filenames = params["input_files"].split(",")
+
+# List of possible extensions
+sample_names = {}
+extensions = ['fq.gz', 'fq', 'fastq.gz', 'fastq']
+for filename in input_filenames:
+    sample_name = os.path.basename(filename).split(".")[0]
+    for ext in extensions:
+        if filename.endswith(ext):
+            sample_names[sample_name] = ext
+            break
+print(sample_names)
+
+if params['umi'] == '' or int(params['umi']) == 0:
+    umi_param = ""
+elif int(params['umi']) > 0:
+    umi_param = f"| fastx_trimmer -f {int(params['umi']) + 1}"
+else:
+    umi_param = f"| fastx_trimmer -t {int(params['umi'])}"
+
+ruleorder: create_symlinks > trim_adapters_r1
+
+rule all:
+    input:
+        "metadata.json",
+        #expand("reads/{sample}.{ext}", zip, sample=sample_names.keys(), ext=sample_names.values())
+        expand("qc/fastqc/{sample}_fastqc.html", sample=sample_names.keys()),
+        expand("qc/fastqc/{sample}_fastqc.zip", sample=sample_names.keys()),
+        #expand("reads/{sample}_trimmed1.fq.gz", sample=sample_names.keys()),
+        #expand("reads/{sample}_trimmed_final.fq.gz", sample=sample_names.keys())
+        #expand("reads/{sample}_trimmed_collapsed.fa", sample=sample_names.keys())
+        #expand("reads/{sample}_rm_rep.fa", sample=sample_names.keys())
+        #expand("ali/{sample}.aligned.mapped.sorted.sam", sample=sample_names.keys())
+        #expand("PARalyzer/{sample}.ini", sample=sample_names.keys())
+        #expand("PARalyzer/{sample}_PARalyzer_Utilized.bam.bai", sample=sample_names.keys())
+        #expand("stats/{sample}_clusters_conv_stats.tsv", sample=sample_names.keys())
+        #expand("genome_viewer_files/{sample}_clusters_unfiltered.bed", sample=sample_names.keys())
+        #expand("genome_viewer_files/{sample}_report.txt", sample=sample_names.keys())
+        expand("motif_enrichment/{sample}_report.txt", sample=sample_names.keys())
+        
+rule get_genomic_files_and_index:
+    input:
+        script=config["parpipe2_dir"] + "/bin/genomic_files_and_indexes.py"
+    output:
+        "metadata.json"
+    params:
+        config_file=config_file_path
+    shell:
+        """
+        python {input.script} --config_file {params.config_file}
+        """
+        
+rule create_symlinks:
+    input:
+        input_filenames
+    output:
+        expand("reads/{sample}.{ext}", zip, sample=sample_names.keys(), ext=sample_names.values())
+    run:
+        # Create the 'reads' directory if it doesn't exist
+        if not os.path.exists("reads"):
+            print("Creating reads directory")
+            os.makedirs("reads")
+            
+        for filename in input_filenames:
+            sample_name = os.path.basename(filename).split(".")[0]
+            ext = sample_names[sample_name]
+            symlink_path = os.path.join("reads", f"{sample_name}.{ext}")
+            if not os.path.lexists(symlink_path):
+                os.symlink(filename, symlink_path)
+        
+rule fastqc:
+    input:
+        lambda wildcards: f"reads/{wildcards.sample}.{sample_names[wildcards.sample]}"
+    output:
+        html="qc/fastqc/{sample}_fastqc.html",
+        zip="qc/fastqc/{sample}_fastqc.zip"
+    log:
+        "logs/fastqc/{sample}.log"
+    params:
+        t=num_cores
+    shell:
+        """
+        # Create output directory if it doesn't exist
+        mkdir -p qc/fastqc
+        echo "Running FastQC on {input}" > {log}
+        fastqc --quiet -t {params.t} {input} --outdir qc/fastqc >> {log} 2>&1
+        """
+        
+rule trim_adapters_r1:
+    input:
+        read=get_input
+    output:
+        trim_reads1 = "reads/{sample}_trimmed1.fq.gz"
+    params:
+        three_prime_adapter=params['three_prime_adapter'],
+        five_prime_adapter=params['five_prime_adapter'],
+        cutadapt_params=params['cutadapt_params1'],
+        nextseq=params['nextseq']
+    log:
+        out_log = "logs/cutadapt_r1/{sample}.log",
+        err_log = "logs/cutadapt_r1/{sample}.err"
+    shell:
+        """
+        nextseq_trim=""
+        if [ "{params.nextseq}" = "True" ]; then
+            nextseq_trim="--nextseq-trim=15"
+        fi
+
+        adapters=""
+        if [ "{params.three_prime_adapter}" != "" ] && [ "{params.five_prime_adapter}" != "" ]; then
+            adapters="-a {params.three_prime_adapter} -g {params.five_prime_adapter}"
+        elif [ "{params.three_prime_adapter}" != "" ]; then
+            adapters="-a {params.three_prime_adapter}"
+        elif [ "{params.five_prime_adapter}" != "" ]; then
+            adapters="-g {params.five_prime_adapter}"
+        fi
+
+        cutadapt_params="{params.cutadapt_params}"
+
+        echo "Command: cutadapt $adapters $nextseq_trim $cutadapt_params -o {output.trim_reads1} {input.read}" >> {log.out_log}
+        cutadapt $adapters $nextseq_trim $cutadapt_params -o {output.trim_reads1} {input.read} >> {log.out_log} 2>> {log.err_log}
+        status=$?
+        if [ $status -ne 0 ]; then
+            echo "cutadapt failed with status $status" >> {log.out_log}
+            cat {log.err_log} >> {log.out_log}
+            exit $status
+        fi
+        """
+        
+if config["cutadapt_params2"] in ["", None]:
+    rule move_trimmed_files:
+        input:
+            trim_read=lambda wildcards: f"reads/{wildcards.sample}_trimmed1.fq.gz"
+        output:
+            trim_final="reads/{sample}_trimmed_final.fq.gz"
+        shell:
+            """
+            echo "Skipping cutadapt round 2"
+            mv {input.trim_read} {output.trim_final}
+            """
+else:
+    rule trim_adapters_r2:
+        input:
+            trim_read=lambda wildcards: f"reads/{wildcards.sample}_trimmed1.fq.gz"
+        output:
+            trim_final="reads/{sample}_trimmed_final.fq.gz"
+        params:
+            cutadapt_params=params['cutadapt_params2']
+        log:
+            out_log = "logs/cutadapt_r2/{sample}.log",
+            err_log = "logs/cutadapt_r2/{sample}.err"
+        shell:
+            """
+            cutadapt_params="{params.cutadapt_params}"
+            echo "Command: cutadapt $cutadapt_params -o {output.trim_final} {input.trim_read}" >> {log.out_log}
+            cutadapt $cutadapt_params -o {output.trim_final} {input.trim_read} >> {log.out_log} 2>> {log.err_log}
+            status=$?
+            if [ $status -ne 0 ]; then
+                echo "cutadapt failed with status $status" >> {log.out_log}
+                cat {log.err_log} >> {log.out_log}
+                exit $status
+            fi
+            """
+            
+rule collapse_reads:
+    input:
+        trim_read=lambda wildcards: f"reads/{wildcards.sample}_trimmed_final.fq.gz"
+    output:
+        collapsed="reads/{sample}_trimmed_collapsed.fa"
+    params:
+        umi_p=umi_param
+    log:
+        err_log = "logs/collapsing_reads/{sample}.err"
+    shell:
+        """
+        seqtk seq -a {input.trim_read} | fastx_collapser -i - {params.umi_p} | sed 's/>/>Read/g' > {output.collapsed} 2>> {log.err_log}
+        status=$?
+        if [ $status -ne 0 ]; then
+            echo "Collapsing command failed with status $status" >> {log.err_log}
+            exit $status
+        fi
+        """
+        
+if config["rem_rep"] in ["True", True, 1, "1"]:
+    rule remove_rep:
+        input:
+            collapsed_read=lambda wildcards: f"reads/{wildcards.sample}_trimmed_collapsed.fa"
+        output:
+            rm_rep_read="reads/{sample}_rm_rep.fa",
+            unaligned_bam="ali/{sample}_reps.bam"
+        params:
+            star_prefix="ali/{sample}_rm_rep",
+            index_path=params["rep_idx"],
+            params=params["star_rem_reps_params"],
+            pp2_dir=params["parpipe2_dir"],
+            t=num_cores
+        log:
+            out_log = "logs/rm_reps/{sample}.log",
+            err_log = "logs/rm_reps/{sample}.err"
+        shell:
+            """
+            threads="{params.t}"
+            prefix="{params.star_prefix}"
+            bam="{params.star_prefix}Aligned.out.bam"
+            fa="{params.star_prefix}Unmapped.out.mate1"
+            rmrep_params="{params.params}"
+            idx_path="{params.index_path}"
+            
+            STAR $rmrep_params --runThreadN $threads --genomeDir $idx_path --outFileNamePrefix $prefix --readFilesIn {input.collapsed_read} >> {log.out_log} 2>> {log.err_log}
+
+            mv $fa {output.rm_rep_read}
+            mv $bam {output.unaligned_bam}
+            
+            status=$?
+            if [ $status -ne 0 ]; then
+                echo "Removing repetitive elaments failed with status $status" >> {log.out_log}
+                cat {log.err_log} >> {log.out_log}
+                exit $status
+            fi
+            """
+else:
+    rule copy_collapsed_files:
+        input:
+            collapsed_read=lambda wildcards: f"reads/{wildcards.sample}_trimmed_collapsed.fa"
+        output:
+            rm_rep_read="reads/{sample}_rm_rep.fa"
+        shell:
+            """
+            cp {input.collapsed_read} {output.rm_rep_read}
+            """
+            
+if params["aligner"] in ['S', 's', 'star', 'Star', 'STAR']:
+    rule genome_alignment_star:
+        input:
+            rm_rep_read=lambda wildcards: f"reads/{wildcards.sample}_rm_rep.fa"
+        output:
+            aligned_sam= "ali/{sample}.aligned.mapped.sorted.sam"
+            #add all other star output files here (not to rule all)
+        params:
+            star_prefix="ali/{sample}",
+            index_path=get_index_path('star'),
+            params=params["star_map_params"],
+            t=num_cores
+        log:
+            out_log = "logs/star_ali/{sample}.log",
+            err_log = "logs/star_ali/{sample}.err"
+        shell:
+            """
+            threads="{params.t}"
+            prefix="{params.star_prefix}"
+            bam="{params.star_prefix}Aligned.out.bam"
+            sam="{params.star_prefix}.aligned.sam"
+            star_params="{params.params}"
+            
+            STAR $star_params --runThreadN $threads --genomeDir {params.index_path} --outFileNamePrefix $prefix --readFilesIn {input.rm_rep_read} >> {log.out_log} 2>> {log.err_log}
+            
+            samtools view -F 4 -h -o $sam $bam >> {log.out_log} 2>> {log.err_log}
+            samtools sort -o {output.aligned.sam} $sam >> {log.out_log} 2>> {log.err_log}
+            
+            status=$?
+            if [ $status -ne 0 ]; then
+                echo "Mapping reads with STAR failed with status $status" >> {log.out_log}
+                cat {log.err_log} >> {log.out_log}
+                exit $status
+            fi
+            """
+else:
+    rule genome_alignment_bowtie:
+        input:
+            rm_rep_read=lambda wildcards: f"reads/{wildcards.sample}_rm_rep.fa"
+        output:
+            aligned_sam= "ali/{sample}.aligned.mapped.sorted.sam"
+        params:
+            index_path=get_index_path('bowtie'),
+            params=params["bowtie_map_params"],
+            t=num_cores
+        log:
+            out_log = "logs/bowtie_ali/{sample}.log",
+            err_log = "logs/bowtie_ali/{sample}.err"
+        shell:
+            """
+            threads="{params.t}"
+            bowtie_params="{params.params}"
+            
+            bowtie {params.index_path}/bwt $bowtie_params -p $threads -f {input.rm_rep_read} 2>> {log.err_log} | samtools view -hS -F 4 - | samtools sort -O SAM - -o {output.aligned_sam} >> {log.out_log} 2>> {log.err_log}
+            
+            status=$?
+            if [ $status -ne 0 ]; then
+                echo "Mapping reads with bowtie failed with status $status" >> {log.out_log}
+                cat {log.err_log} >> {log.out_log}
+                exit $status
+            fi
+            """
+            
+rule prepare_paralyzer_ini:
+    input:
+        sam=lambda wildcards: f"ali/{wildcards.sample}.aligned.mapped.sorted.sam"
+    output:
+        paralyzer_ini="PARalyzer/{sample}.ini"
+    params:
+        genome_2bit=get_2bit_path(),
+        bandwidth=params["BANDWIDTH"],
+        conv=params["CONVERSION"],
+        min_read_cnt_group=params["MINIMUM_READ_COUNT_PER_GROUP"],
+        min_read_cnt_clust=params["MINIMUM_READ_COUNT_PER_CLUSTER"],
+        min_read_cnt_kde=params["MINIMUM_READ_COUNT_FOR_KDE"],
+        min_clust_size=params["MINIMUM_CLUSTER_SIZE"],
+        min_conv_loc_clust=params["MINIMUM_CONVERSION_LOCATIONS_FOR_CLUSTER"],
+        min_conv_cnt_clust=params["MINIMUM_CONVERSION_COUNT_FOR_CLUSTER"],
+        min_read_cnt_clust_incl=params["MINIMUM_READ_COUNT_FOR_CLUSTER_INCLUSION"],
+        min_read_l=params["MINIMUM_READ_LENGTH"],
+        max_non_conv_mism=params["MAXIMUM_NUMBER_OF_NON_CONVERSION_MISMATCHES"],
+        signal_ext=params["signal_extension"],
+        add_nt_signal=params["ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL"],
+        pcr_dups=params["use_pcr_duplicates"]
+    shell:
+        """
+        in_sam="$(pwd)/{input.sam}"
+        if [ "{params.pcr_dups}" = "True" ]; then
+            in_sam="$(pwd)/{input.sam}=COLLAPSED"
+        fi        
+        bandwidth="{params.bandwidth}"
+        conv="{params.conv}"
+        min_read_cnt_group="{params.min_read_cnt_group}"
+        min_read_cnt_clust="{params.min_read_cnt_clust}"
+        min_read_cnt_kde="{params.min_read_cnt_kde}"
+        min_clust_size="{params.min_clust_size}"
+        min_conv_loc_clust="{params.min_conv_loc_clust}"
+        min_conv_cnt_clust="{params.min_conv_cnt_clust}"
+        min_read_cnt_clust_incl="{params.min_read_cnt_clust_incl}"
+        min_read_l="{params.min_read_l}"
+        max_non_conv_mism="{params.max_non_conv_mism}"
+        signal_ext="{params.signal_ext}"
+        add_nt_signal=""
+        if [ "{params.signal_ext}" = "ADDITIONAL_NUCLEOTIDES_BEYOND_SIGNAL" ]; then
+            signal_ext="={params.add_nt_signal}"
+            if [ ! -z "{params.add_nt_signal}" ] && [ "{params.add_nt_signal}" != "['']" ]; then
+                signal_ext="={params.add_nt_signal}"
+            fi
+        fi
+        cat <<EOL > {output.paralyzer_ini}
+#
+BANDWIDTH=$bandwidth
+CONVERSION=$conv
+MINIMUM_READ_COUNT_PER_GROUP=$min_read_cnt_group
+MINIMUM_READ_COUNT_PER_CLUSTER=$min_read_cnt_clust
+MINIMUM_READ_COUNT_FOR_KDE=$min_read_cnt_kde
+MINIMUM_CLUSTER_SIZE=$min_clust_size
+MINIMUM_CONVERSION_LOCATIONS_FOR_CLUSTER=$min_conv_loc_clust
+MINIMUM_CONVERSION_COUNT_FOR_CLUSTER=$min_conv_cnt_clust
+MINIMUM_READ_COUNT_FOR_CLUSTER_INCLUSION=$min_read_cnt_clust_incl
+MINIMUM_READ_LENGTH=$min_read_l
+MAXIMUM_NUMBER_OF_NON_CONVERSION_MISMATCHES=$max_non_conv_mism
+
+$signal_ext$add_nt_signal
+
+GENOME_2BIT_FILE={params.genome_2bit}
+SAM_FILE=$in_sam
+
+OUTPUT_DISTRIBUTIONS_FILE=$(pwd)/PARalyzer/{wildcards.sample}.distribution
+OUTPUT_GROUPS_FILE=$(pwd)/PARalyzer/{wildcards.sample}.groups
+OUTPUT_CLUSTERS_FILE=$(pwd)/PARalyzer/{wildcards.sample}.clusters
+OUTPUT_READS_FILE=$(pwd)/PARalyzer/{wildcards.sample}_PARalyzer_Utilized.sam
+
+EOL
+        """
+        
+rule run_paralyzer: 
+    input:        
+        ini_file=lambda wildcards: f"PARalyzer/{wildcards.sample}.ini"
+    output:
+        bam="PARalyzer/{sample}_PARalyzer_Utilized.bam",
+        bam_idx="PARalyzer/{sample}_PARalyzer_Utilized.bam.bai",
+        distr="PARalyzer/{sample}.distribution",
+        groups="PARalyzer/{sample}.groups",
+        clusters="PARalyzer/{sample}.clusters"
+    params:
+        mem=params["paralyzer_memory"]
+    log:
+        out_log = "logs/PARalyzer/{sample}.log",
+        err_log = "logs/PARalyzer/{sample}.err"
+    shell:
+        """
+        mem="{params.mem}"
+        
+        PARalyzer $mem {input.ini_file} >> {log.out_log} 2>> {log.err_log}
+        samtools sort -o {output.bam} PARalyzer/{wildcards.sample}_PARalyzer_Utilized.sam  >> {log.out_log} 2>> {log.err_log}
+        samtools index {output.bam} >> {log.out_log} 2>> {log.err_log}
+        
+        status=$?
+            if [ $status -ne 0 ]; then
+                echo "Running PARalyzer failed with status $status" >> {log.out_log}
+                cat {log.err_log} >> {log.out_log}
+                exit $status
+            fi
+        """
+        
+rule calc_conv_stats:
+    input:
+        bam=lambda wildcards: f"PARalyzer/{wildcards.sample}_PARalyzer_Utilized.bam",
+        groups=lambda wildcards: f"PARalyzer/{wildcards.sample}.groups",
+        clusters=lambda wildcards: f"PARalyzer/{wildcards.sample}.clusters", 
+    output:
+        groups_conv="stats/{sample}_groups_conv_stats.tsv",
+        clusters_conv="stats/{sample}_clusters_conv_stats.tsv"
+    params:
+        script=params["parpipe2_dir"] + "/bin/add_conv_stats.py",
+        genome=get_genome_path(),
+        t=num_cores,
+        conv=params["CONVERSION"]
+    log:
+        out_log = "logs/conv_stats/{sample}.log",
+        err_log = "logs/conv_stats/{sample}.err"
+    shell:
+        """
+        python {params.script} --bamfile {input.bam} --groups {input.groups} --clusters {input.clusters} --genome {params.genome} --threads {params.t} --conv "{params.conv}" 2>> {log.err_log}
+        """
+        
+rule annotate_groups_and_clusters:
+    input:
+        groups=lambda wildcards: f"stats/{wildcards.sample}_groups_conv_stats.tsv",
+        clusters=lambda wildcards: f"stats/{wildcards.sample}_clusters_conv_stats.tsv"
+    output:
+        stats_groups_annot="stats/{sample}_groups_conv_stats_annotated.tsv",
+        groups_annot="annot/{sample}_groups_annotated.tsv",
+        stats_clust_annot="stats/{sample}_clusters_conv_stats_annotated.tsv",
+        clust_annot="annot/{sample}_clusters_annotated.tsv",
+        clust_filtered_bed="genome_viewer_files/{sample}_clusters_filtered.bed",
+        clust_unfiltered_bed="genome_viewer_files/{sample}_clusters_unfiltered.bed"
+    params:
+        pp2_dir=params["parpipe2_dir"],
+        script=params["parpipe2_dir"] + "/bin/annot_groups_and_clusters.R",
+        annot_rank=params["annot_rank"],
+        main_annot=main_annot_path(),
+        trna_annot=params["parpipe2_dir"] + "/annotation/" + params["organism"] +"/rds_files/trna.rds",
+        repeats_annot=params["parpipe2_dir"] + "/annotation/" + params["organism"] +"/rds_files/repeats.rds"
+    log:
+        out_log = "logs/annot/{sample}.log",
+        err_log = "logs/annot/{sample}.err"
+    shell:
+        """
+        annot_rank="{params.annot_rank}"
+        
+        Rscript {params.script} $(pwd) $annot_rank {params.main_annot} {params.trna_annot} {params.repeats_annot} {input.groups} {input.clusters} 2>> {log.err_log}
+        """
+        
+rule create_bigwigs:
+    input:
+        bam=lambda wildcards: f"PARalyzer/{wildcards.sample}_PARalyzer_Utilized.bam",
+        filt_bed=lambda wildcards: f"genome_viewer_files/{wildcards.sample}_clusters_filtered.bed",      
+        unfilt_bed=lambda wildcards: f"genome_viewer_files/{wildcards.sample}_clusters_unfiltered.bed"
+    output:
+        bw_report="genome_viewer_files/{sample}_report.txt"
+    params:
+        t=num_cores
+    log:
+        out_log = "logs/bed_to_bigwig/{sample}.log",
+        err_log = "logs/bed_to_bigwig/{sample}.err"
+    shell:
+        """
+        echo "Running create_bigwigs"
+        
+        line_count_filt=$(wc -l < {input.filt_bed} | tr -d ' ')
+        line_count_unfilt=$(wc -l < {input.unfilt_bed} | tr -d ' ')
+        
+        if [ $line_count_filt -gt 0 ]; then
+            bedtools intersect -abam {input.bam} -b {input.filt_bed} -s > genome_viewer_files/{wildcards.sample}_clusters_filtered.bam 2>> {log.err_log}
+            samtools index genome_viewer_files/{wildcards.sample}_clusters_filtered.bam
+            bamCoverage -b genome_viewer_files/{wildcards.sample}_clusters_filtered.bam -o genome_viewer_files/{wildcards.sample}_clusters_filtered_fwd.bw --binSize 1 --effectiveGenomeSize 2913022398 -p {params.t} --normalizeUsing CPM --filterRNAstrand forward >> {log.out_log} 2>> {log.err_log}
+            bamCoverage -b genome_viewer_files/{wildcards.sample}_clusters_filtered.bam -o genome_viewer_files/{wildcards.sample}_clusters_filtered_rev.bw --binSize 1 --effectiveGenomeSize 2913022398 -p {params.t} --normalizeUsing CPM --filterRNAstrand reverse >> {log.out_log} 2>> {log.err_log}
+        else
+            echo "{input.filt_bed} is empty" >> {log.out_log}
+        fi
+        
+        if [ $line_count_unfilt -gt 0 ]; then
+            bedtools intersect -abam {input.bam} -b {input.unfilt_bed} -s > genome_viewer_files/{wildcards.sample}_clusters_unfiltered.bam 2>> {log.err_log}
+            samtools index genome_viewer_files/{wildcards.sample}_clusters_unfiltered.bam
+            bamCoverage -b genome_viewer_files/{wildcards.sample}_clusters_unfiltered.bam -o genome_viewer_files/{wildcards.sample}_clusters_unfiltered_fwd.bw --binSize 1 --effectiveGenomeSize 2913022398 -p {params.t} --normalizeUsing CPM --filterRNAstrand forward >> {log.out_log} 2>> {log.err_log}
+            bamCoverage -b genome_viewer_files/{wildcards.sample}_clusters_unfiltered.bam -o genome_viewer_files/{wildcards.sample}_clusters_unfiltered_rev.bw --binSize 1 --effectiveGenomeSize 2913022398 -p {params.t} --normalizeUsing CPM --filterRNAstrand reverse >> {log.out_log} 2>> {log.err_log}
+            cat {log.out_log} >> {output.bw_report}
+            cat {log.err_log} >> {output.bw_report}
+        else
+            echo "{input.unfilt_bed} is empty" >> {log.out_log}
+            cat {log.out_log} >> {output.bw_report}
+        fi
+        """
+        
+rule motif_enrichment:
+    input:
+        filt_bed=lambda wildcards: f"genome_viewer_files/{wildcards.sample}_clusters_filtered.bed"
+    output:
+        motif_enr_report="motif_enrichment/{sample}_report.txt"
+    params:
+        genome=get_genome_path(),
+        method=params["motif_enrichment_method"],
+        params=params["motif_enrichment_params"]
+    log:
+        out_log = "logs/motif_enrichment/{sample}.log",
+        err_log = "logs/motif_enrichment/{sample}.err"
+    shell:
+        """
+        echo "Running motif_enrichment"
+        
+        line_count_filt=$(wc -l < {input.filt_bed} | tr -d ' ')
+
+        if [ $line_count_filt -gt 0 ]; then
+            method="{params.method}"
+            params="{params.params}"
+            bedtools getfasta -fi {params.genome} -bed {input.filt_bed} -s -fo motif_enrichment/{wildcards.sample}_clusters_filtered.fa >> {log.out_log} 2>> {log.err_log}
+            $method motif_enrichment/{wildcards.sample}_clusters_filtered.fa -oc motif_enrichment/{wildcards.sample}_motif_enr $params >> {log.out_log} 2>> {log.err_log}
+            cat {log.out_log} >> {output.motif_enr_report}
+            cat {log.err_log} >> {output.motif_enr_report}
+        else
+            echo "{input.filt_bed} is empty" >> {log.out_log}
+            cat {log.out_log} >> {output.motif_enr_report}
+        fi
+        """
+
